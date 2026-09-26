@@ -37,17 +37,19 @@ class JobRepositoryImpl implements JobRepository {
   @override
   Future<Result<void>> submitFinalItems(
     int jobId,
-    List<Map<String, dynamic>> items, {
+    List<Map<String, dynamic>> finalItems, {
     String? notes,
-    double discountAmount = 0,
+    String? discountType,
+    double discountValue = 0,
     double downPayment = 0,
   }) async {
     try {
       await _dataSource.submitFinalItems(
         jobId,
-        items,
+        finalItems,
         notes: notes,
-        discountAmount: discountAmount,
+        discountType: discountType,
+        discountValue: discountValue,
         downPayment: downPayment,
       );
       return const Success(null);
@@ -55,6 +57,76 @@ class JobRepositoryImpl implements JobRepository {
       return Failure(e.message);
     } catch (_) {
       return const Failure('Gagal mengirim laporan item akhir.');
+    }
+  }
+
+  @override
+  Future<Result<void>> updateFinalItems(
+    int jobId,
+    List<Map<String, dynamic>> finalItems, {
+    String? notes,
+    String? discountType,
+    double discountValue = 0,
+    double downPayment = 0,
+  }) async {
+    try {
+      await _dataSource.updateFinalItems(
+        jobId,
+        finalItems,
+        notes: notes,
+        discountType: discountType,
+        discountValue: discountValue,
+        downPayment: downPayment,
+      );
+      return const Success(null);
+    } on ApiException catch (e) {
+      return Failure(e.message);
+    } catch (_) {
+      return const Failure('Gagal memperbarui laporan item akhir.');
+    }
+  }
+
+  @override
+  Future<Result<void>> submitHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  }) async {
+    try {
+      await _dataSource.submitHourlyReport(
+        jobId,
+        actualDurationHours,
+        actualCleanerCount,
+        notes: notes,
+      );
+      return const Success(null);
+    } on ApiException catch (e) {
+      return Failure(e.message);
+    } catch (_) {
+      return const Failure('Gagal mengirim laporan jam kerja.');
+    }
+  }
+
+  @override
+  Future<Result<void>> updateHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  }) async {
+    try {
+      await _dataSource.updateHourlyReport(
+        jobId,
+        actualDurationHours,
+        actualCleanerCount,
+        notes: notes,
+      );
+      return const Success(null);
+    } on ApiException catch (e) {
+      return Failure(e.message);
+    } catch (_) {
+      return const Failure('Gagal memperbarui laporan jam kerja.');
     }
   }
 }

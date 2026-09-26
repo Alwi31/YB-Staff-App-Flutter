@@ -4,7 +4,9 @@
     <application
         android:label="YB Staff"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
+        <!-- 2. Tambahkan baris ini untuk izinkan HTTP lokal -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

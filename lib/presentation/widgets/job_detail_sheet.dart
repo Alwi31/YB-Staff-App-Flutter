@@ -6,10 +6,11 @@ import 'package:yb_staff_app/core/theme/app_colors.dart';
 import 'package:yb_staff_app/core/theme/app_spacing.dart';
 import 'package:yb_staff_app/core/utils/currency_formatter.dart';
 import 'package:yb_staff_app/core/utils/date_formatter.dart';
+import 'package:yb_staff_app/core/utils/item_formatter.dart';
 import 'package:yb_staff_app/domain/entities/job.dart';
 import 'package:yb_staff_app/domain/entities/job_item.dart';
 
-class JobDetailSheet extends StatelessWidget {
+class JobDetailSheet extends StatefulWidget {
   const JobDetailSheet({super.key, required this.job});
 
   final Job job;
@@ -21,6 +22,19 @@ class JobDetailSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => JobDetailSheet(job: job),
     );
+  }
+
+  @override
+  State<JobDetailSheet> createState() => _JobDetailSheetState();
+}
+
+class _JobDetailSheetState extends State<JobDetailSheet> {
+  late bool _isEstimasiExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isEstimasiExpanded = widget.job.finalItems.isEmpty;
   }
 
   @override
@@ -70,16 +84,7 @@ class JobDetailSheet extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
                             ),
-                          ),
-                          if (job.orderCode != null)
-                            Text(
-                              job.orderCode!,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textHint,
-                              ),
-                            ),
+                          )
                         ],
                       ),
                     ),
@@ -103,9 +108,7 @@ class JobDetailSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildOrdererSection(context),
-                      if (!job.siteContactIsOrderer &&
-                          (job.siteContactName?.isNotEmpty ?? false))
-                        _buildSiteContactSection(context),
+                      _buildSiteContactSection(context),
                       _buildLocationSection(),
                       _buildStatusSection(),
                       _buildNotesSection(),
@@ -129,25 +132,36 @@ class JobDetailSheet extends StatelessWidget {
     return _section(
       title: AppStrings.sectionOrderer,
       children: [
-        _infoRow(AppStrings.labelOrderer, job.customerName),
-        _phoneRow(context, AppStrings.labelOrdererPhone, job.customerPhone),
+        _ordererInfoRow(AppStrings.labelOrderer, widget.job.customerName,
+            widget.job.customerStatus),
+        _phoneRow(
+            context, AppStrings.labelOrdererPhone, widget.job.customerPhone),
       ],
     );
   }
 
   Widget _buildSiteContactSection(BuildContext context) {
-    final phone = job.siteContactPhone;
+    final contactName = (widget.job.siteContactName != null &&
+            widget.job.siteContactName!.trim().isNotEmpty)
+        ? widget.job.siteContactName!.trim()
+        : widget.job.customerName;
+    final contactPhone = (widget.job.siteContactPhone != null &&
+            widget.job.siteContactPhone!.trim().isNotEmpty)
+        ? widget.job.siteContactPhone!.trim()
+        : widget.job.customerPhone;
+    final normalizedPhone =
+        widget.job.siteContactNormalizedPhone ?? widget.job.customerPhone;
+
     return _section(
       title: AppStrings.sectionSiteContact,
       children: [
-        _infoRow(AppStrings.labelSiteContactName, job.siteContactName!),
-        if (phone != null && phone.isNotEmpty)
-          _phoneRow(
-            context,
-            AppStrings.labelSiteContactPhone,
-            phone,
-            normalizedPhone: job.siteContactNormalizedPhone,
-          ),
+        _infoRow(AppStrings.labelSiteContactName, contactName),
+        _phoneRow(
+          context,
+          AppStrings.labelSiteContactPhone,
+          contactPhone,
+          normalizedPhone: normalizedPhone,
+        ),
       ],
     );
   }
@@ -156,59 +170,74 @@ class JobDetailSheet extends StatelessWidget {
     return _section(
       title: AppStrings.sectionLocation,
       children: [
-        if (job.region != null) _infoRow(AppStrings.labelRegion, job.region!),
-        _infoRow(AppStrings.labelAddress, job.address),
-        if (job.mapsLink != null)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: SizedBox(
-              width: double.infinity,
-              height: 38,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final uri = Uri.parse(job.mapsLink!);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.inputBorder),
-                  foregroundColor: AppColors.textSecondary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusButton),
+        if (widget.job.region != null)
+          _infoRow(AppStrings.labelRegion, widget.job.region!),
+        _infoRow(AppStrings.labelAddress, widget.job.address),
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.sm),
+          child: InkWell(
+            onTap: _openMaps,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.primary, width: 1.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on_outlined,
+                      size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    AppStrings.openNavigation,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-                icon: const Icon(Icons.map_outlined, size: 16),
-                label: Text(
-                  AppStrings.openMaps,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.open_in_new_rounded,
+                      size: 14, color: AppColors.primary),
+                ],
               ),
             ),
           ),
+        ),
       ],
     );
   }
 
+  Future<void> _openMaps() async {
+    final link = widget.job.mapsLink;
+    final uri = link != null && link.isNotEmpty
+        ? Uri.parse(link)
+        : Uri.parse(
+            'https://maps.google.com/?q=${Uri.encodeComponent(widget.job.address)}');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   Widget _buildStatusSection() {
-    final hour = job.scheduledAt.hour;
-    final session = hour < 12
-        ? AppStrings.sessionPagi
-        : hour < 15
-            ? AppStrings.sessionSiang
-            : AppStrings.sessionSore;
+    final hour = widget.job.scheduledAt.hour;
+    final session = widget.job.scheduleTimeLabel ??
+        (hour < 12
+            ? AppStrings.sessionPagi
+            : hour < 15
+                ? AppStrings.sessionSiang
+                : AppStrings.sessionSore);
     final scheduleText =
-        '${DateFormatter.toFull(job.scheduledAt)} - ${DateFormatter.toTime(job.scheduledAt)} WIB - $session';
+        '${DateFormatter.toFull(widget.job.scheduledAt)} - ${widget.job.scheduleTime ?? DateFormatter.toTime(widget.job.scheduledAt)} WIB - $session';
 
     return _section(
       title: AppStrings.sectionStatusSchedule,
       children: [
         _infoRow(AppStrings.labelSchedule, scheduleText),
-        _infoRow(AppStrings.labelStatus, job.status.displayName),
-        if (job.power != null) _infoRow(AppStrings.labelPower, job.power!),
+        _infoRow(AppStrings.labelStatus, widget.job.status.displayName),
+        if (widget.job.power != null)
+          _infoRow(AppStrings.labelPower, widget.job.power!),
+        _infoRow('Staff', widget.job.assignedStaffName ?? '-'),
       ],
     );
   }
@@ -218,12 +247,15 @@ class JobDetailSheet extends StatelessWidget {
       title: AppStrings.sectionNotes,
       children: [
         Text(
-          job.notes ?? AppStrings.noNotes,
+          widget.job.notes ?? AppStrings.noNotes,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 13,
             fontWeight: FontWeight.w400,
-            color: job.notes != null ? AppColors.textPrimary : AppColors.textHint,
-            fontStyle: job.notes != null ? FontStyle.normal : FontStyle.italic,
+            color: widget.job.notes != null
+                ? AppColors.textPrimary
+                : AppColors.textHint,
+            fontStyle:
+                widget.job.notes != null ? FontStyle.normal : FontStyle.italic,
           ),
         ),
       ],
@@ -231,99 +263,168 @@ class JobDetailSheet extends StatelessWidget {
   }
 
   Widget _buildPhotosSection() {
+    if (widget.job.photos.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return _section(
       title: AppStrings.sectionPhotos,
       children: [
-        if (job.photos.isEmpty)
-          Text(
-            AppStrings.noPhotos,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textHint,
-              fontStyle: FontStyle.italic,
-            ),
-          )
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: AppSpacing.sm,
-              mainAxisSpacing: AppSpacing.sm,
-            ),
-            itemCount: job.photos.length,
-            itemBuilder: (_, i) => ClipRRect(
-              borderRadius: BorderRadius.circular(AppSpacing.sm),
-              child: Image.network(
-                job.photos[i],
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFFF3F4F6),
-                  child: const Icon(Icons.broken_image_outlined,
-                      color: AppColors.textHint),
-                ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: AppSpacing.sm,
+            mainAxisSpacing: AppSpacing.sm,
+          ),
+          itemCount: widget.job.photos.length,
+          itemBuilder: (_, i) => ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.sm),
+            child: Image.network(
+              widget.job.photos[i],
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: const Color(0xFFF3F4F6),
+                child: const Icon(Icons.broken_image_outlined,
+                    color: AppColors.textHint),
               ),
             ),
           ),
+        ),
       ],
     );
   }
 
   Widget _buildPricingSection() {
-    final showFinal = job.status == JobStatus.invoiceGenerated ||
-        job.status == JobStatus.completed;
-    final displayItems = showFinal ? job.finalItems : job.items;
-    final sectionTitle = showFinal ? AppStrings.finalItemsTag : AppStrings.estimatedItemsTag;
+    final job = widget.job;
 
-    // Use API-provided values when available, fall back to calculation
+    final hasFinalItems = job.finalItems.isNotEmpty &&
+        (job.status == JobStatus.waitingFinalItems ||
+            job.status == JobStatus.invoiceGenerated ||
+            job.status == JobStatus.completed);
+
     final subtotal = job.subtotalPrice > 0
         ? job.subtotalPrice
-        : displayItems.fold(0.0, (s, i) => s + i.subtotal);
+        : (hasFinalItems ? job.finalItems : job.items)
+            .fold(0.0, (s, i) => s + i.subtotal);
     final discount = job.discount;
-    final total = job.finalTotalPrice > 0
-        ? job.finalTotalPrice
-        : subtotal - discount;
+    final total =
+        job.finalTotalPrice > 0 ? job.finalTotalPrice : subtotal - discount;
     final downPayment = job.downPayment;
     final outstanding = job.outstandingBalance;
 
-    if (displayItems.isEmpty) {
-      return _section(
-        title: sectionTitle,
-        children: [
-          Text(
-            AppStrings.noItems,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: AppColors.textHint,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      );
-    }
-
     final discountLabel = _discountLabel();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F7F5),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (job.isHourly && job.hourlyDetails != null) _buildHourlySummary(),
+
+        // ── 1. Estimasi Item ───────────────────────────────────────────────
+        if (job.items.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F7F5),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+              ),
+              child: job.finalItems.isNotEmpty
+                  ? Theme(
+                      data: Theme.of(context)
+                          .copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        title: Text(
+                          'Estimasi Item',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF6B8A78),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        tilePadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xl),
+                        childrenPadding: const EdgeInsets.only(
+                            left: AppSpacing.xl,
+                            right: AppSpacing.xl,
+                            bottom: AppSpacing.xl),
+                        initiallyExpanded: _isEstimasiExpanded,
+                        onExpansionChanged: (val) =>
+                            setState(() => _isEstimasiExpanded = val),
+                        children: job.items.isEmpty
+                            ? [
+                                Text(
+                                  AppStrings.noItems,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    color: AppColors.textHint,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                )
+                              ]
+                            : job.items.map((item) => _itemRow(item)).toList(),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Estimasi Item',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: const Color(0xFF6B8A78),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          if (job.items.isEmpty)
+                            Text(
+                              AppStrings.noItems,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: AppColors.textHint,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            )
+                          else
+                            ...job.items.map((item) => _itemRow(item)),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+
+        // ── 2. Final Item (Hanya jika staff sudah input final item) ───────
+        if (hasFinalItems)
+          _section(
+            title: 'Final Item',
+            children: [
+              ...job.finalItems.map((item) => _itemRow(item)),
+            ],
+          ),
+
+        // ── 3. Total Invoice ──────────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F9F6),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  sectionTitle,
+                  'Total Invoice',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -331,114 +432,73 @@ class JobDetailSheet extends StatelessWidget {
                     letterSpacing: 0.5,
                   ),
                 ),
-                Text(
-                  CurrencyFormatter.format(subtotal),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ...displayItems.map((item) => _itemRow(item)),
-            const Divider(height: AppSpacing.xl, color: Color(0xFFE5E7EB)),
-            _priceRow(AppStrings.subtotalLabel, CurrencyFormatter.format(subtotal)),
-            _priceRow(discountLabel, CurrencyFormatter.format(discount),
-                isDiscount: true),
-            const SizedBox(height: AppSpacing.sm),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
-            const SizedBox(height: AppSpacing.md),
-            // Total akhir
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppStrings.totalFinal,
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                Text(CurrencyFormatter.format(total),
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
-              ],
-            ),
-            if (downPayment > 0) ...[
-              const SizedBox(height: AppSpacing.lg),
-              const Divider(height: 1, color: Color(0xFFE5E7EB)),
-              const SizedBox(height: AppSpacing.md),
-              _priceRow(AppStrings.downPaymentLabel, CurrencyFormatter.format(downPayment)),
-              const SizedBox(height: AppSpacing.sm),
-              // Sisa tagihan — highlighted
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: outstanding > 0
-                      ? const Color(0xFFFFF7ED)
-                      : const Color(0xFFECFDF5),
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-                  border: Border.all(
-                    color: outstanding > 0
-                        ? const Color(0xFFFED7AA)
-                        : const Color(0xFF6EE7B7),
-                  ),
-                ),
-                child: Row(
+                const SizedBox(height: AppSpacing.md),
+                _priceRow(AppStrings.subtotalLabel,
+                    CurrencyFormatter.format(subtotal)),
+                _priceRow(discountLabel, CurrencyFormatter.format(discount),
+                    isDiscount: true),
+                const SizedBox(height: AppSpacing.sm),
+                const Divider(height: 1, color: Color(0xFFDDE7E1)),
+                const SizedBox(height: AppSpacing.md),
+                // Total akhir
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          outstanding > 0
-                              ? Icons.pending_outlined
-                              : Icons.check_circle_outline,
-                          size: 14,
-                          color: outstanding > 0
-                              ? const Color(0xFFD97706)
-                              : const Color(0xFF059669),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          AppStrings.remainingBill,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: outstanding > 0
-                                ? const Color(0xFFD97706)
-                                : const Color(0xFF059669),
-                          ),
-                        ),
-                      ],
+                    Text(AppStrings.totalFinal,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary)),
+                    Text(CurrencyFormatter.format(total),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary)),
+                  ],
+                ),
+                if (downPayment > 0) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _priceRow(AppStrings.downPaymentLabel,
+                      CurrencyFormatter.format(downPayment)),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                const Divider(height: 1, color: Color(0xFFDDE7E1)),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppStrings.remainingBill,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
                     ),
                     Text(
                       outstanding > 0
                           ? CurrencyFormatter.format(outstanding)
                           : AppStrings.lunas,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: outstanding > 0
-                            ? const Color(0xFFD97706)
-                            : const Color(0xFF059669),
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ],
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
   String _discountLabel() {
-    if (job.discountType == 'percentage' && job.discountValue > 0) {
-      return '${AppStrings.discountLabel} (${job.discountValue.toStringAsFixed(job.discountValue % 1 == 0 ? 0 : 1)}%)';
+    if (widget.job.discountType == 'percentage' &&
+        widget.job.discountValue > 0) {
+      return '${AppStrings.discountLabel} (${widget.job.discountValue.toStringAsFixed(widget.job.discountValue % 1 == 0 ? 0 : 1)}%)';
     }
     return AppStrings.discountLabel;
   }
@@ -508,6 +568,65 @@ class JobDetailSheet extends StatelessWidget {
     );
   }
 
+  Widget _ordererInfoRow(String label, String value, String? status) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textHint,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                Text(
+                  value,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (status != null && status.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: status.toUpperCase() == 'NEW'
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFF3B82F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _phoneRow(
     BuildContext context,
     String label,
@@ -532,8 +651,7 @@ class JobDetailSheet extends StatelessWidget {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () =>
-                  _showContactOptions(context, phone, normalizedPhone),
+              onTap: () => _showContactOptions(context, phone, normalizedPhone),
               child: Text(
                 phone,
                 style: GoogleFonts.plusJakartaSans(
@@ -582,7 +700,8 @@ class JobDetailSheet extends StatelessWidget {
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.chat_rounded, color: Color(0xFF25D366)),
+                leading:
+                    const Icon(Icons.chat_rounded, color: Color(0xFF25D366)),
                 title: Text(
                   AppStrings.chatWhatsapp,
                   style: GoogleFonts.plusJakartaSans(
@@ -597,7 +716,8 @@ class JobDetailSheet extends StatelessWidget {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.call_rounded, color: AppColors.primary),
+                leading:
+                    const Icon(Icons.call_rounded, color: AppColors.primary),
                 title: Text(
                   AppStrings.callPhone,
                   style: GoogleFonts.plusJakartaSans(
@@ -667,7 +787,7 @@ class JobDetailSheet extends StatelessWidget {
                 ),
                 if (item.description != null)
                   Text(
-                    '${item.description} - ${item.quantity} item',
+                    '${item.description} - ${ItemFormatter.formatQuantityLabel(quantity: item.quantity, areaSize: item.areaSize, unit: item.unit)}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
@@ -693,7 +813,7 @@ class JobDetailSheet extends StatelessWidget {
 
   Widget _priceRow(String label, String amount, {bool isDiscount = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -701,20 +821,133 @@ class JobDetailSheet extends StatelessWidget {
             label,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF6B8A78),
             ),
           ),
           Text(
             isDiscount ? '- $amount' : amount,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHourlySummary() {
+    final job = widget.job;
+    final hourly = job.hourlyDetails!;
+    final report = job.hourlyReport;
+    final tarif = hourly.hourlyRateSnapshot;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _section(
+          title: 'Ringkasan Laporan Jam Kerja',
+          children: [
+            _infoRow(
+                'Tarif', '${CurrencyFormatter.format(tarif)} / jam / cleaner'),
+            const SizedBox(height: AppSpacing.sm),
+            _infoRow('Durasi', '${hourly.plannedDurationHours} Jam'),
+            _infoRow('Cleaner', '${hourly.plannedCleanerCount} Orang'),
+            const Divider(height: AppSpacing.xl, color: Color(0xFFE5E7EB)),
+            if (report != null) ...[
+              Text(
+                'FINAL LAPORAN CLEANING',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF6B8A78),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _infoRow('Durasi Aktual', '${report.actualDurationHours} Jam'),
+              _infoRow('Cleaner Aktual', '${report.actualCleanerCount} Orang'),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Aktual',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    CurrencyFormatter.format(report.finalTotalPrice),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Estimasi',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    CurrencyFormatter.format(hourly.estimatedTotal),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ]
+          ],
+        ),
+        if (report == null && job.status != JobStatus.completed)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg, vertical: AppSpacing.xs)
+                .copyWith(bottom: AppSpacing.md),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      color: Color(0xFFEF4444), size: 20),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Laporan jam kerja aktual belum dikirimkan oleh Staff pengerjaan.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFB91C1C),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

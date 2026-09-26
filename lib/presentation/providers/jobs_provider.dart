@@ -9,6 +9,7 @@ import 'package:yb_staff_app/data/mock/mock_job_repository.dart';
 import 'package:yb_staff_app/data/repositories_impl/job_repository_impl.dart';
 import 'package:yb_staff_app/domain/entities/job.dart';
 import 'package:yb_staff_app/domain/repositories/job_repository.dart';
+import 'package:yb_staff_app/domain/entities/job_item.dart';
 import 'package:yb_staff_app/presentation/providers/auth_provider.dart';
 
 // Toggle to run with mock data (no backend needed)
@@ -41,8 +42,7 @@ final selectedDateProvider = StateProvider<DateTime>((_) => _today());
 
 // ── Jobs list (family by date) ────────────────────────────────────────────────
 
-class JobsNotifier
-    extends AutoDisposeFamilyAsyncNotifier<List<Job>, DateTime> {
+class JobsNotifier extends AutoDisposeFamilyAsyncNotifier<List<Job>, DateTime> {
   Timer? _pollingTimer;
 
   void _startPolling() {
@@ -75,8 +75,7 @@ class JobsNotifier
     _startPolling();
     ref.onDispose(_stopPolling);
 
-    final result =
-        await ref.watch(jobRepositoryProvider).getJobsByDate(arg);
+    final result = await ref.watch(jobRepositoryProvider).getJobsByDate(arg);
     switch (result) {
       case Success<List<Job>>(:final data):
         return data;
@@ -94,9 +93,8 @@ class JobsNotifier
           .toList(),
     );
 
-    final result = await ref
-        .read(jobRepositoryProvider)
-        .updateJobStatus(jobId, status);
+    final result =
+        await ref.read(jobRepositoryProvider).updateJobStatus(jobId, status);
 
     if (result is Failure<void>) {
       // Roll back and propagate error so caller can show toast
@@ -107,18 +105,108 @@ class JobsNotifier
 
   Future<void> submitFinalItems(
     int jobId,
-    List<Map<String, dynamic>> items, {
+    List<Map<String, dynamic>> finalItems, {
     String? notes,
-    double discountAmount = 0,
+    String? discountType,
+    double discountValue = 0,
     double downPayment = 0,
+    bool isUpdate = false,
   }) async {
-    final result = await ref.read(jobRepositoryProvider).submitFinalItems(
-          jobId,
-          items,
-          notes: notes,
-          discountAmount: discountAmount,
-          downPayment: downPayment,
+    final repo = ref.read(jobRepositoryProvider);
+    final result = isUpdate
+        ? await repo.updateFinalItems(
+            jobId,
+            finalItems,
+            notes: notes,
+            discountType: discountType,
+            discountValue: discountValue,
+            downPayment: downPayment,
+          )
+        : await repo.submitFinalItems(
+            jobId,
+            finalItems,
+            notes: notes,
+            discountType: discountType,
+            discountValue: discountValue,
+            downPayment: downPayment,
+          );
+
+    switch (result) {
+      case Success<void>():
+        final updatedFinalItems = finalItems.map((map) {
+          final isArea = map.containsKey('area_size') && map['area_size'] != null;
+          final qty = (map['quantity'] as num?)?.toDouble() ?? 1.0;
+          final area = (map['area_size'] as num?)?.toDouble();
+          
+          return JobItem(
+            id: DateTime.now().millisecondsSinceEpoch % 100000 + (map['service_item_id'] as int? ?? 0),
+            name: map['item_name'] as String? ?? 'Unknown Item',
+            description: map['description'] as String?,
+            quantity: isArea ? 1.0 : qty,
+            areaSize: area,
+            price: (map['unit_price'] as num?)?.toDouble() ?? 0.0,
+            subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0.0,
+            unit: map['unit'] as String?,
+            serviceType: map['service_type'] as String?,
+            subItemName: map['sub_item_name'] as String?,
+            serviceItemId: map['service_item_id']?.toString(),
+            notes: map['notes'] as String?,
+          );
+        }).toList();
+
+        final subtotalPrice = updatedFinalItems.fold(0.0, (sum, item) => sum + item.subtotal);
+        double finalTotalPrice = subtotalPrice;
+        if (discountType == 'percentage') {
+          finalTotalPrice = subtotalPrice - (subtotalPrice * discountValue / 100);
+        } else if (discountType == 'nominal') {
+          finalTotalPrice = subtotalPrice - discountValue;
+        }
+        if (finalTotalPrice < 0) finalTotalPrice = 0.0;
+
+        // Optimistic: status → waitingFinalItems and apply finalItems
+        final current = state.valueOrNull ?? [];
+        state = AsyncData(
+          current
+              .map((j) => j.id == jobId
+                  ? j.copyWith(
+                      status: JobStatus.waitingFinalItems,
+                      finalItems: updatedFinalItems,
+                      subtotalPrice: subtotalPrice,
+                      finalTotalPrice: finalTotalPrice,
+                      notes: notes ?? j.notes,
+                      discountType: discountType ?? j.discountType,
+                      discountValue: discountValue,
+                    )
+                  : j)
+              .toList(),
         );
+        ref.invalidateSelf();
+      case Failure<void>():
+        throw Exception(result.message);
+    }
+  }
+
+  Future<void> submitHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+    bool isUpdate = false,
+  }) async {
+    final repo = ref.read(jobRepositoryProvider);
+    final result = isUpdate
+        ? await repo.updateHourlyReport(
+            jobId,
+            actualDurationHours,
+            actualCleanerCount,
+            notes: notes,
+          )
+        : await repo.submitHourlyReport(
+            jobId,
+            actualDurationHours,
+            actualCleanerCount,
+            notes: notes,
+          );
 
     switch (result) {
       case Success<void>():
@@ -131,8 +219,9 @@ class JobsNotifier
                   : j)
               .toList(),
         );
-      case Failure<void>(:final message):
-        throw Exception(message);
+        ref.invalidateSelf();
+      case Failure<void>():
+        throw Exception(result.message);
     }
   }
 }

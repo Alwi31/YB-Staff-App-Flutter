@@ -19,10 +19,46 @@ class MockJobRepository implements JobRepository {
   @override
   Future<Result<void>> submitFinalItems(
     int jobId,
-    List<Map<String, dynamic>> items, {
+    List<Map<String, dynamic>> finalItems, {
     String? notes,
-    double discountAmount = 0,
+    String? discountType,
+    double discountValue = 0,
     double downPayment = 0,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> updateFinalItems(
+    int jobId,
+    List<Map<String, dynamic>> finalItems, {
+    String? notes,
+    String? discountType,
+    double discountValue = 0,
+    double downPayment = 0,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> submitHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    return const Success(null);
+  }
+
+  @override
+  Future<Result<void>> updateHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     return const Success(null);
@@ -32,6 +68,8 @@ class MockJobRepository implements JobRepository {
   List<Job> _buildMockJobs(DateTime date) => [
         Job(
           id: 1,
+          assignedStaffId: 5,
+          assignedStaffName: 'Parjo',
           customerName: 'Stephen',
           customerPhone: '081234567890',
           address: 'Jl. Senen Raya No. 88',
@@ -85,6 +123,8 @@ class MockJobRepository implements JobRepository {
             ),
           ],
           notes: 'Pastikan bawa cairan pembersih ekstra.',
+          assignedStaffId: 5,
+          assignedStaffName: 'Parjo',
         ),
         Job(
           id: 3,

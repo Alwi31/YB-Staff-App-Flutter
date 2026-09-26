@@ -26,16 +26,18 @@ abstract final class ApiConstants {
   static String myJobFinalItems(int orderId) =>
       '/api/my-jobs/$orderId/final-items';
 
+  /// POST/PUT — submit/update laporan jam aktual (hourly)
+  static String myJobHourlyReport(int orderId) =>
+      '/api/my-jobs/$orderId/hourly-report';
+
   // ── Staff — Order Detail (FSD §11.4) ─────────────────────────────────────
   /// GET   — detail lengkap satu order (customer, items, foto, dll.)
-  static String staffOrderDetail(int orderId) =>
-      '/api/staff/orders/$orderId';
+  static String staffOrderDetail(int orderId) => '/api/staff/orders/$orderId';
 
   // ── Staff — Foto Item (FSD §11.4) ─────────────────────────────────────────
   /// POST  — upload foto item pekerjaan (multipart/form-data)
   ///         field: file = image file
-  static String uploadItemPhoto(int orderId) =>
-      '/api/my-jobs/$orderId/photos';
+  static String uploadItemPhoto(int orderId) => '/api/my-jobs/$orderId/photos';
 
   /// DELETE — hapus foto item yang sudah diupload
   static String deleteItemPhoto(int orderId, int photoId) =>
@@ -53,7 +55,7 @@ abstract final class ApiConstants {
 
   /// POST  — upload foto profil (multipart/form-data, requires auth)
   ///         field: avatar = image file
-  static const String updateAvatar = '/api/auth/me/avatar';
+  static const String updateAvatar = '/api/profile/avatar';
 
   /// POST  — ubah kata sandi (requires auth)
   ///         body: { old_password, password, password_confirmation }
@@ -75,8 +77,7 @@ abstract final class ApiConstants {
       '/api/notifications/unread-count';
 
   /// PATCH — tandai satu notifikasi sebagai sudah dibaca
-  static String notificationRead(String id) =>
-      '/api/notifications/$id/read';
+  static String notificationRead(String id) => '/api/notifications/$id/read';
 
   /// PATCH — tandai semua notifikasi sebagai sudah dibaca
   static const String notificationsReadAll = '/api/notifications/read-all';

@@ -37,12 +37,9 @@ class ServiceItemModel {
 
     // Override with service-type specific price if available
     final prices = json['prices'];
-    if (prices is List &&
-        forServiceType != null &&
-        forServiceType.isNotEmpty) {
+    if (prices is List && forServiceType != null && forServiceType.isNotEmpty) {
       for (final p in prices) {
-        if (p is Map<String, dynamic> &&
-            p['service_type'] == forServiceType) {
+        if (p is Map<String, dynamic> && p['service_type'] == forServiceType) {
           price = (p['price'] as num?)?.toDouble() ?? price;
           break;
         }

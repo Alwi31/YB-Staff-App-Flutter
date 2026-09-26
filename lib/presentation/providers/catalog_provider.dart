@@ -6,10 +6,15 @@ import 'package:yb_staff_app/presentation/providers/auth_provider.dart';
 
 /// All 4 service types supported by the system.
 const kServiceTypes = <({String key, String label})>[
-  (key: 'disinfeksi', label: 'Disinfeksi'),
+  (key: 'deep_vacuum', label: 'HydroVacuum Plus'),
+  (key: 'hydrovacuum', label: 'HydroVacuum'),
+  (key: 'premium_dry_wash', label: 'Premium Dry Wash'),
+  (key: 'essential_dry_wash', label: 'Essential Dry Wash'),
   (key: 'leather_revive', label: 'Leather Revive'),
-  (key: 'deep_vacuum', label: 'Deep Vacuum'),
-  (key: 'cuci_dry_wash', label: 'Cuci Dry Wash'),
+  (key: 'disinfeksi', label: 'Disinfeksi'),
+  (key: 'general_cleaning', label: 'General Cleaning'),
+  (key: 'daily_cleaning', label: 'Daily Cleaning'),
+  (key: 'add_on', label: 'Add On'),
 ];
 
 /// Returns the display label for a service type key.

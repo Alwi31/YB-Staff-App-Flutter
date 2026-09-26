@@ -83,8 +83,8 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppSpacing.radiusSheet)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(AppSpacing.radiusSheet)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -264,8 +264,7 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.primary.withAlpha(120),
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusButton),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusButton),
                 ),
                 elevation: 0,
               ),
@@ -398,7 +397,8 @@ class _Field extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.radiusCard),

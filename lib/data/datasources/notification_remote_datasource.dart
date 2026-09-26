@@ -26,8 +26,7 @@ class NotificationRemoteDataSource {
   }
 
   Future<NotificationModel> markAsRead(String id) async {
-    final response =
-        await _apiClient.patch(ApiConstants.notificationRead(id));
+    final response = await _apiClient.patch(ApiConstants.notificationRead(id));
     final data = response['data'] is Map<String, dynamic>
         ? response['data'] as Map<String, dynamic>
         : response;

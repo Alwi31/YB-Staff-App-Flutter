@@ -1,4 +1,7 @@
 import 'package:yb_staff_app/domain/entities/job_item.dart';
+import 'package:yb_staff_app/domain/entities/hourly_details.dart';
+import 'package:yb_staff_app/domain/entities/hourly_report.dart';
+import 'package:yb_staff_app/domain/entities/invoice_summary.dart';
 
 enum JobStatus {
   assigned,
@@ -46,6 +49,8 @@ enum JobStatus {
 class Job {
   const Job({
     required this.id,
+    this.assignedStaffId,
+    this.assignedStaffName,
     required this.customerName,
     required this.customerPhone,
     required this.address,
@@ -72,9 +77,21 @@ class Job {
     this.siteContactName,
     this.siteContactPhone,
     this.siteContactNormalizedPhone,
+    this.isHourly = false,
+    this.hourlyDetails,
+    this.hourlyReport,
+    this.minimumPayment,
+    this.grandTotal = 0.0,
+    this.customerStatus,
+    this.finalItemsEditable = false,
+    this.scheduleTimeLabel,
+    this.scheduleTime,
+    this.invoiceSummary,
   });
 
   final int id;
+  final int? assignedStaffId;
+  final String? assignedStaffName;
   final String customerName;
   final String customerPhone;
   final String address;
@@ -92,14 +109,28 @@ class Job {
   final String? siteContactPhone;
   final String? siteContactNormalizedPhone;
 
+  // ── Hourly ────────────────────────────────────────────────────────────────
+  final bool isHourly;
+  final HourlyDetails? hourlyDetails;
+  final HourlyReport? hourlyReport;
+
+  // ── Extras ────────────────────────────────────────────────────────────────
+  final String? customerStatus;
+  final bool finalItemsEditable;
+  final String? scheduleTimeLabel;
+  final String? scheduleTime;
+  final InvoiceSummary? invoiceSummary;
+
   // ── Pricing ───────────────────────────────────────────────────────────────
-  final double discount;         // discount_amount (Rp)
-  final String? discountType;   // 'percentage' | 'fixed' | null
-  final double discountValue;   // raw value: e.g. 10 for 10% or 50000 for fixed
-  final double downPayment;     // down_payment
+  final double discount; // discount_amount (Rp)
+  final String? discountType; // 'percentage' | 'fixed' | null
+  final double discountValue; // raw value: e.g. 10 for 10% or 50000 for fixed
+  final double downPayment; // down_payment
   final double outstandingBalance; // outstanding_balance
-  final double subtotalPrice;   // subtotal_price from API
+  final double subtotalPrice; // subtotal_price from API
   final double finalTotalPrice; // final_total_price from API
+  final double? minimumPayment;
+  final double grandTotal;
 
   final List<String> photos;
   final String? notes;
@@ -114,6 +145,8 @@ class Job {
 
   Job copyWith({
     int? id,
+    int? assignedStaffId,
+    String? assignedStaffName,
     String? customerName,
     String? customerPhone,
     String? address,
@@ -140,9 +173,21 @@ class Job {
     String? siteContactName,
     String? siteContactPhone,
     String? siteContactNormalizedPhone,
+    bool? isHourly,
+    HourlyDetails? hourlyDetails,
+    HourlyReport? hourlyReport,
+    double? minimumPayment,
+    double? grandTotal,
+    String? customerStatus,
+    bool? finalItemsEditable,
+    String? scheduleTimeLabel,
+    String? scheduleTime,
+    InvoiceSummary? invoiceSummary,
   }) {
     return Job(
       id: id ?? this.id,
+      assignedStaffId: assignedStaffId ?? this.assignedStaffId,
+      assignedStaffName: assignedStaffName ?? this.assignedStaffName,
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       address: address ?? this.address,
@@ -170,6 +215,16 @@ class Job {
       siteContactPhone: siteContactPhone ?? this.siteContactPhone,
       siteContactNormalizedPhone:
           siteContactNormalizedPhone ?? this.siteContactNormalizedPhone,
+      isHourly: isHourly ?? this.isHourly,
+      hourlyDetails: hourlyDetails ?? this.hourlyDetails,
+      hourlyReport: hourlyReport ?? this.hourlyReport,
+      minimumPayment: minimumPayment ?? this.minimumPayment,
+      grandTotal: grandTotal ?? this.grandTotal,
+      customerStatus: customerStatus ?? this.customerStatus,
+      finalItemsEditable: finalItemsEditable ?? this.finalItemsEditable,
+      scheduleTimeLabel: scheduleTimeLabel ?? this.scheduleTimeLabel,
+      scheduleTime: scheduleTime ?? this.scheduleTime,
+      invoiceSummary: invoiceSummary ?? this.invoiceSummary,
     );
   }
 

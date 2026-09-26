@@ -5,7 +5,8 @@ import 'package:yb_staff_app/domain/entities/app_notification.dart';
 import 'package:yb_staff_app/domain/repositories/notification_repository.dart';
 
 class NotificationRepositoryImpl implements NotificationRepository {
-  const NotificationRepositoryImpl({required NotificationRemoteDataSource dataSource})
+  const NotificationRepositoryImpl(
+      {required NotificationRemoteDataSource dataSource})
       : _dataSource = dataSource;
 
   final NotificationRemoteDataSource _dataSource;

@@ -71,7 +71,8 @@ class _ToastWidgetState extends State<_ToastWidget>
 
   Future<void> _dismiss() async {
     if (!mounted) return;
-    _ctrl.animateBack(0, duration: const Duration(milliseconds: 250), curve: Curves.easeIn);
+    _ctrl.animateBack(0,
+        duration: const Duration(milliseconds: 250), curve: Curves.easeIn);
     await Future<void>.delayed(const Duration(milliseconds: 260));
     widget.onDismiss();
   }

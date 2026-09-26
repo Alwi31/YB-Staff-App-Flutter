@@ -1,9 +1,14 @@
 import 'package:yb_staff_app/data/models/job_item_model.dart';
 import 'package:yb_staff_app/domain/entities/job.dart';
+import 'package:yb_staff_app/data/models/hourly_details_model.dart';
+import 'package:yb_staff_app/data/models/hourly_report_model.dart';
+import 'package:yb_staff_app/data/models/invoice_summary_model.dart';
 
 class JobModel {
   const JobModel({
     required this.id,
+    this.assignedStaffId,
+    this.assignedStaffName,
     required this.customerName,
     required this.customerPhone,
     required this.address,
@@ -30,9 +35,21 @@ class JobModel {
     this.siteContactName,
     this.siteContactPhone,
     this.siteContactNormalizedPhone,
+    this.isHourly = false,
+    this.hourlyDetails,
+    this.hourlyReport,
+    this.minimumPayment,
+    this.grandTotal = 0.0,
+    this.customerStatus,
+    this.finalItemsEditable = false,
+    this.scheduleTimeLabel,
+    this.scheduleTime,
+    this.invoiceSummary,
   });
 
   final int id;
+  final int? assignedStaffId;
+  final String? assignedStaffName;
   final String customerName;
   final String customerPhone;
   final String address;
@@ -47,6 +64,14 @@ class JobModel {
   final String? siteContactName;
   final String? siteContactPhone;
   final String? siteContactNormalizedPhone;
+  final bool isHourly;
+  final HourlyDetailsModel? hourlyDetails;
+  final HourlyReportModel? hourlyReport;
+  final String? customerStatus;
+  final bool finalItemsEditable;
+  final String? scheduleTimeLabel;
+  final String? scheduleTime;
+  final InvoiceSummaryModel? invoiceSummary;
   final double discount;
   final String? discountType;
   final double discountValue;
@@ -54,6 +79,8 @@ class JobModel {
   final double outstandingBalance;
   final double subtotalPrice;
   final double finalTotalPrice;
+  final double? minimumPayment;
+  final double grandTotal;
   final List<String> photos;
   final String? notes;
   final String? orderCode;
@@ -67,6 +94,8 @@ class JobModel {
 
     return JobModel(
       id: _parseInt(json['id']) ?? 0,
+      assignedStaffId: _parseInt(json['assigned_staff_id']),
+      assignedStaffName: _parseString(json['assigned_staff_name']),
       orderCode: _parseString(json['order_code']),
       customerName: _parseString(customerMap['name']) ?? '',
       customerPhone: _parseString(customerMap['phone']) ?? '',
@@ -94,13 +123,32 @@ class JobModel {
       siteContactPhone: _parseString(json['site_contact_phone']),
       siteContactNormalizedPhone:
           _parseString(json['site_contact_normalized_phone']),
+      isHourly: _parseBool(json['is_hourly']) ?? false,
+      hourlyDetails: json['hourly_details'] != null
+          ? HourlyDetailsModel.fromJson(
+              json['hourly_details'] as Map<String, dynamic>)
+          : null,
+      hourlyReport: json['hourly_report'] != null
+          ? HourlyReportModel.fromJson(
+              json['hourly_report'] as Map<String, dynamic>)
+          : null,
+      minimumPayment: _parseDouble(json['minimum_payment']),
+      grandTotal: _parseDouble(json['grand_total']) ??
+          _parseDouble(json['final_total_price']) ??
+          0.0,
+      customerStatus: _parseString(customerMap['customer_status']),
+      finalItemsEditable: _parseBool(json['final_items_editable']) ?? false,
+      scheduleTimeLabel: _parseString(json['schedule_time_label']),
+      scheduleTime: _parseString(json['schedule_time']),
+      invoiceSummary: json['invoice_summary'] != null
+          ? InvoiceSummaryModel.fromJson(json['invoice_summary'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   // ── Defensive parsers ─────────────────────────────────────────────────────
 
-  static String? _parseString(dynamic v) =>
-      v is String ? v : v?.toString();
+  static String? _parseString(dynamic v) => v is String ? v : v?.toString();
 
   static bool? _parseBool(dynamic v) {
     if (v is bool) return v;
@@ -161,6 +209,8 @@ class JobModel {
 
   Job toEntity() => Job(
         id: id,
+        assignedStaffId: assignedStaffId,
+        assignedStaffName: assignedStaffName,
         customerName: customerName,
         customerPhone: customerPhone,
         address: address,
@@ -187,6 +237,16 @@ class JobModel {
         siteContactName: siteContactName,
         siteContactPhone: siteContactPhone,
         siteContactNormalizedPhone: siteContactNormalizedPhone,
+        isHourly: isHourly,
+        hourlyDetails: hourlyDetails?.toEntity(),
+        hourlyReport: hourlyReport?.toEntity(),
+        minimumPayment: minimumPayment,
+        grandTotal: grandTotal,
+        customerStatus: customerStatus,
+        finalItemsEditable: finalItemsEditable,
+        scheduleTimeLabel: scheduleTimeLabel,
+        scheduleTime: scheduleTime,
+        invoiceSummary: invoiceSummary,
       );
 
   static JobStatus _parseStatus(String status) {

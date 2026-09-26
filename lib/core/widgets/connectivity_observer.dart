@@ -43,7 +43,8 @@ class _ConnectivityObserverState extends State<ConnectivityObserver> {
 
   void _showToast(String message, ToastType type) {
     if (!mounted) return;
-    AppToast.show(context, message, type: type, duration: const Duration(seconds: 4));
+    AppToast.show(context, message,
+        type: type, duration: const Duration(seconds: 4));
   }
 
   @override

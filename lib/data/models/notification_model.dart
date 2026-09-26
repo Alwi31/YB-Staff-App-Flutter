@@ -24,15 +24,11 @@ class NotificationModel {
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     // id can be int or string
     final rawId = json['id'];
-    final id = rawId is int
-        ? rawId.toString()
-        : (rawId as String? ?? '');
+    final id = rawId is int ? rawId.toString() : (rawId as String? ?? '');
 
     // title and message are at top level
     final title = json['title'] as String? ?? 'Notifikasi';
-    final body = json['message'] as String? ??
-        json['body'] as String? ??
-        '';
+    final body = json['message'] as String? ?? json['body'] as String? ?? '';
     final type = json['type'] as String? ?? '';
 
     // order/job id is inside the nested data object
@@ -56,8 +52,7 @@ class NotificationModel {
       type: type,
       jobId: jobId,
       isRead: isRead,
-      createdAt: DateTime.tryParse(
-              json['created_at'] as String? ?? '') ??
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
     );
   }

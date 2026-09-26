@@ -10,12 +10,10 @@ import 'package:yb_staff_app/presentation/providers/auth_provider.dart';
 
 final notificationDataSourceProvider =
     Provider<NotificationRemoteDataSource>((ref) {
-  return NotificationRemoteDataSource(
-      apiClient: ref.watch(apiClientProvider));
+  return NotificationRemoteDataSource(apiClient: ref.watch(apiClientProvider));
 });
 
-final notificationRepositoryProvider =
-    Provider<NotificationRepository>((ref) {
+final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   return NotificationRepositoryImpl(
     dataSource: ref.watch(notificationDataSourceProvider),
   );
@@ -56,8 +54,7 @@ class NotificationNotifier extends Notifier<NotificationState> {
   @override
   NotificationState build() => const NotificationState();
 
-  NotificationRepository get _repo =>
-      ref.read(notificationRepositoryProvider);
+  NotificationRepository get _repo => ref.read(notificationRepositoryProvider);
 
   Future<void> loadNotifications() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -90,9 +87,8 @@ class NotificationNotifier extends Notifier<NotificationState> {
     final result = await _repo.markAsRead(id);
     switch (result) {
       case Success(:final data):
-        final updated = state.notifications
-            .map((n) => n.id == id ? data : n)
-            .toList();
+        final updated =
+            state.notifications.map((n) => n.id == id ? data : n).toList();
         final unread = updated.where((n) => !n.isRead).length;
         state = state.copyWith(notifications: updated, unreadCount: unread);
         return true;

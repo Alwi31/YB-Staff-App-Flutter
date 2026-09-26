@@ -33,8 +33,7 @@ class JobRemoteDataSource {
 
   /// GET /api/staff/orders/{id} — detail satu order berdasarkan ID
   Future<JobModel> getJobById(int jobId) async {
-    final response =
-        await _apiClient.get(ApiConstants.staffOrderDetail(jobId));
+    final response = await _apiClient.get(ApiConstants.staffOrderDetail(jobId));
     final data = response['data'] is Map<String, dynamic>
         ? response['data'] as Map<String, dynamic>
         : response;
@@ -57,19 +56,84 @@ class JobRemoteDataSource {
   /// POST /final-items — submit item akhir & tandai pekerjaan selesai
   Future<void> submitFinalItems(
     int jobId,
-    List<Map<String, dynamic>> items, {
+    List<Map<String, dynamic>> finalItems, {
     String? notes,
-    double discountAmount = 0,
+    String? discountType,
+    double discountValue = 0,
     double downPayment = 0,
   }) async {
-    final body = <String, dynamic>{'items': items};
+    final body = <String, dynamic>{
+      'final_items': finalItems,
+      'items': finalItems,
+    };
     if (notes != null && notes.isNotEmpty) body['notes'] = notes;
-    if (discountAmount > 0) body['discount_amount'] = discountAmount.toInt();
-    if (downPayment > 0) body['down_payment'] = downPayment.toInt();
+    if (discountType != null) body['discount_type'] = discountType;
+    if (discountValue > 0) body['discount_value'] = discountValue.toInt();
+    if (downPayment >= 0) body['down_payment'] = downPayment.toInt();
     await _apiClient.post(
       ApiConstants.myJobFinalItems(jobId),
       body: body,
       requiresAuth: true,
+    );
+  }
+
+  /// PUT /final-items — update final item
+  Future<void> updateFinalItems(
+    int jobId,
+    List<Map<String, dynamic>> finalItems, {
+    String? notes,
+    String? discountType,
+    double discountValue = 0,
+    double downPayment = 0,
+  }) async {
+    final body = <String, dynamic>{
+      'final_items': finalItems,
+      'items': finalItems,
+    };
+    if (notes != null && notes.isNotEmpty) body['notes'] = notes;
+    if (discountType != null) body['discount_type'] = discountType;
+    if (discountValue > 0) body['discount_value'] = discountValue.toInt();
+    if (downPayment >= 0) body['down_payment'] = downPayment.toInt();
+    await _apiClient.put(
+      ApiConstants.myJobFinalItems(jobId),
+      body: body,
+    );
+  }
+
+  /// POST /hourly-report — submit laporan jam
+  Future<void> submitHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  }) async {
+    final body = <String, dynamic>{
+      'actual_duration_hours': actualDurationHours,
+      'actual_cleaner_count': actualCleanerCount,
+    };
+    if (notes != null && notes.isNotEmpty) body['notes'] = notes;
+    await _apiClient.post(
+      ApiConstants.myJobHourlyReport(jobId),
+      body: body,
+      requiresAuth: true,
+    );
+  }
+
+  /// PUT /hourly-report — update laporan jam
+  Future<void> updateHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  }) async {
+    final body = <String, dynamic>{
+      'actual_duration_hours': actualDurationHours,
+      'actual_cleaner_count': actualCleanerCount,
+    };
+    if (notes != null && notes.isNotEmpty) body['notes'] = notes;
+    await _apiClient.put(
+      ApiConstants.myJobHourlyReport(jobId),
+      body: body,
     );
   }
 }

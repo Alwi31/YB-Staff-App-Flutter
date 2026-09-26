@@ -29,8 +29,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   }
 
   Future<void> _markAllAsRead() async {
-    final ok =
-        await ref.read(notificationProvider.notifier).markAllAsRead();
+    final ok = await ref.read(notificationProvider.notifier).markAllAsRead();
     if (!mounted) return;
     AppToast.show(
       context,
@@ -55,8 +54,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
   Future<void> _openJobDetail(int jobId) async {
     try {
-      final ds = JobRemoteDataSource(
-          apiClient: ref.read(apiClientProvider));
+      final ds = JobRemoteDataSource(apiClient: ref.read(apiClientProvider));
       final model = await ds.getJobById(jobId);
       final job = model.toEntity();
       if (!mounted) return;
@@ -140,7 +138,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   ref.read(notificationProvider.notifier).loadNotifications(),
               child: state.isLoading && state.notifications.isEmpty
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary),
                     )
                   : state.error != null && state.notifications.isEmpty
                       ? _ErrorView(
@@ -220,9 +219,8 @@ class _NotificationTile extends StatelessWidget {
           vertical: AppSpacing.md,
         ),
         decoration: BoxDecoration(
-          color: isUnread
-              ? AppColors.primary.withAlpha(10)
-              : Colors.transparent,
+          color:
+              isUnread ? AppColors.primary.withAlpha(10) : Colors.transparent,
           border: const Border(
             bottom: BorderSide(
               color: Color(0xFFE5E7EB),
@@ -257,9 +255,8 @@ class _NotificationTile extends StatelessWidget {
                           notification.title,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
-                            fontWeight: isUnread
-                                ? FontWeight.w700
-                                : FontWeight.w600,
+                            fontWeight:
+                                isUnread ? FontWeight.w700 : FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -393,8 +390,7 @@ class _ErrorView extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusButton),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusButton),
                 ),
               ),
               icon: const Icon(Icons.refresh_rounded, size: 18),

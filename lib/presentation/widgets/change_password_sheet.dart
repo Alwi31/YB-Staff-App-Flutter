@@ -124,8 +124,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                   label: AppStrings.oldPasswordLabel,
                   hint: AppStrings.oldPasswordHint,
                   obscure: !_showCurrent,
-                  onToggle: () =>
-                      setState(() => _showCurrent = !_showCurrent),
+                  onToggle: () => setState(() => _showCurrent = !_showCurrent),
                   validator: (v) => (v == null || v.isEmpty)
                       ? AppStrings.oldPasswordEmpty
                       : null,
@@ -156,8 +155,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                   label: AppStrings.confirmPasswordLabel,
                   hint: AppStrings.confirmPasswordHint,
                   obscure: !_showConfirm,
-                  onToggle: () =>
-                      setState(() => _showConfirm = !_showConfirm),
+                  onToggle: () => setState(() => _showConfirm = !_showConfirm),
                   validator: (v) {
                     if (v == null || v.isEmpty) {
                       return AppStrings.confirmPasswordEmpty;
@@ -184,8 +182,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.primary.withAlpha(120),
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusButton),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusButton),
                 ),
                 elevation: 0,
               ),
@@ -285,8 +282,7 @@ class _PasswordField extends StatelessWidget {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-              borderSide:
-                  const BorderSide(color: AppColors.error, width: 1.5),
+              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
             ),
             filled: true,
             fillColor: const Color(0xFFFAFAFA),

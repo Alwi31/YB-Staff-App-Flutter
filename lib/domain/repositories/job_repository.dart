@@ -6,9 +6,33 @@ abstract interface class JobRepository {
   Future<Result<void>> updateJobStatus(int jobId, JobStatus status);
   Future<Result<void>> submitFinalItems(
     int jobId,
-    List<Map<String, dynamic>> items, {
+    List<Map<String, dynamic>> finalItems, {
     String? notes,
-    double discountAmount = 0,
+    String? discountType,
+    double discountValue = 0,
     double downPayment = 0,
+  });
+
+  Future<Result<void>> updateFinalItems(
+    int jobId,
+    List<Map<String, dynamic>> finalItems, {
+    String? notes,
+    String? discountType,
+    double discountValue = 0,
+    double downPayment = 0,
+  });
+
+  Future<Result<void>> submitHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
+  });
+
+  Future<Result<void>> updateHourlyReport(
+    int jobId,
+    double actualDurationHours,
+    int actualCleanerCount, {
+    String? notes,
   });
 }

@@ -14,9 +14,9 @@ class ApiClient {
     http.Client? httpClient,
     Alice? alice,
     void Function()? onUnauthorized,
-  }) : _tokenStorage = tokenStorage,
-       _httpClient = httpClient ?? http.Client(),
-       _onUnauthorized = onUnauthorized {
+  })  : _tokenStorage = tokenStorage,
+        _httpClient = httpClient ?? http.Client(),
+        _onUnauthorized = onUnauthorized {
     if (alice != null) {
       _aliceAdapter = AliceHttpAdapter();
       alice.addAdapter(_aliceAdapter!);
@@ -48,7 +48,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }
@@ -71,7 +72,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }
@@ -94,7 +96,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }
@@ -122,7 +125,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }
@@ -134,8 +138,7 @@ class ApiClient {
     final uri = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     final headers = await _buildHeaders(requiresAuth: true);
     try {
-      final request = http.Request('DELETE', uri)
-        ..headers.addAll(headers);
+      final request = http.Request('DELETE', uri)..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
       final streamed = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamed);
@@ -145,7 +148,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }
@@ -166,7 +170,8 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw const ApiException(
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
       );
     }
   }

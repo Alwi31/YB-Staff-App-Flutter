@@ -9,6 +9,8 @@ class UserModel {
     required this.token,
     this.phone,
     this.avatarUrl,
+    this.employmentType = 'internal_fulltime',
+    this.isMitra = false,
   });
 
   final int id;
@@ -18,6 +20,8 @@ class UserModel {
   final String token;
   final String? phone;
   final String? avatarUrl;
+  final String employmentType;
+  final bool isMitra;
 
   /// Login response: { "token": "...", "user": {...} }
   /// or wrapped:     { "data": { "token": "...", "user": {...} } }
@@ -34,6 +38,9 @@ class UserModel {
       token: payload['token'] as String? ?? '',
       phone: user?['phone'] as String?,
       avatarUrl: _parseAvatar(user),
+      employmentType:
+          user?['employment_type'] as String? ?? 'internal_fulltime',
+      isMitra: user?['is_mitra'] as bool? ?? false,
     );
   }
 
@@ -56,6 +63,8 @@ class UserModel {
       token: '',
       phone: data['phone'] as String?,
       avatarUrl: _parseAvatar(data),
+      employmentType: data['employment_type'] as String? ?? 'internal_fulltime',
+      isMitra: data['is_mitra'] as bool? ?? false,
     );
   }
 
@@ -75,5 +84,7 @@ class UserModel {
         token: token,
         phone: phone,
         avatarUrl: avatarUrl,
+        employmentType: employmentType,
+        isMitra: isMitra,
       );
 }

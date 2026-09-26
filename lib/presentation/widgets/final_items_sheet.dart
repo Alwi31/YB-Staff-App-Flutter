@@ -10,11 +10,14 @@ import 'package:yb_staff_app/domain/entities/job.dart';
 import 'package:yb_staff_app/domain/entities/job_item.dart';
 import 'package:yb_staff_app/domain/entities/service_item.dart';
 import 'package:yb_staff_app/presentation/providers/catalog_provider.dart';
+import 'package:yb_staff_app/core/widgets/app_toast.dart';
+import 'package:yb_staff_app/presentation/widgets/confirm_dialog.dart';
 
 typedef FinalItemsSubmitCallback = Future<void> Function(
   List<Map<String, dynamic>> items,
   String? notes,
-  double discountAmount,
+  String? discountType,
+  double discountValue,
   double downPayment,
 );
 
@@ -64,12 +67,10 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
   // ── Discount & DP ─────────────────────────────────────────────────────────
   double _selectedPercent = 0;
   final _discountNominalCtrl = TextEditingController();
-  final _dpCtrl = TextEditingController();
 
   double get _discountAmount =>
       double.tryParse(_discountNominalCtrl.text.replaceAll('.', '')) ?? 0;
-  double get _dpAmount =>
-      double.tryParse(_dpCtrl.text.replaceAll('.', '')) ?? 0;
+  double get _dpAmount => widget.job.minimumPayment ?? widget.job.downPayment;
   double get _finalTotal =>
       (_subtotal - _discountAmount).clamp(0.0, double.infinity);
   double get _outstandingAmount =>
@@ -87,19 +88,31 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
   @override
   void initState() {
     super.initState();
-    for (final item in widget.job.items) {
-      _items.add(_ItemEntry.fromJobItem(item));
+    final sourceItems = widget.job.finalItems.isNotEmpty
+        ? widget.job.finalItems
+        : widget.job.items;
+
+    for (final item in sourceItems) {
+      final entry = _ItemEntry.fromJobItem(item);
+      _items.add(entry);
+      if (entry.catalogId != null) {
+        _selectedCatalogIds.add(entry.catalogId!);
+      }
     }
     _selectedServiceType = _resolveDefaultServiceType();
+
+    if (widget.job.finalItems.isNotEmpty) {
+      _showPrefilledBanner = false;
+    }
+
+    if (widget.job.notes != null && widget.job.notes!.isNotEmpty) {
+      _notesCtrl.text = widget.job.notes!;
+    }
 
     // Pre-fill discount and DP from job order
     if (widget.job.discount > 0) {
       _discountNominalCtrl.text = _ThousandSeparatorFormatter._fmt(
           widget.job.discount.toInt().toString());
-    }
-    if (widget.job.downPayment > 0) {
-      _dpCtrl.text = _ThousandSeparatorFormatter._fmt(
-          widget.job.downPayment.toInt().toString());
     }
   }
 
@@ -108,7 +121,6 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
     _searchCtrl.dispose();
     _notesCtrl.dispose();
     _discountNominalCtrl.dispose();
-    _dpCtrl.dispose();
     for (final item in _items) {
       item.dispose();
     }
@@ -118,10 +130,13 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
   String _resolveDefaultServiceType() {
     for (final svc in widget.job.services) {
       final normalized = svc.toLowerCase().replaceAll(' ', '_');
+      // Exact match dulu (lebih akurat, terutama untuk add_on)
       for (final t in kServiceTypes) {
-        if (t.key == normalized ||
-            normalized.contains(t.key) ||
-            t.key.contains(normalized)) {
+        if (t.key == normalized || t.key == svc) return t.key;
+      }
+      // Fallback: partial match
+      for (final t in kServiceTypes) {
+        if (normalized.contains(t.key) || t.key.contains(normalized)) {
           return t.key;
         }
       }
@@ -139,23 +154,221 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
     entry.dispose();
   }
 
-  void _addFromCatalog(ServiceItem item) {
-    if (_selectedCatalogIds.contains(item.id)) return;
-    setState(() {
-      _selectedCatalogIds.add(item.id);
-      _items.add(_ItemEntry(
-        catalogId: item.id,
-        name: item.name,
-        description: item.category,
-        unitPrice: item.price,
-        unit: item.unit,
-        initialQty: 1,
-      ));
-    });
+  void _removeFromCatalog(int catalogId, {bool showToast = true}) {
+    final index = _items.indexWhere((e) => e.catalogId == catalogId);
+    if (index >= 0) {
+      _removeItem(index);
+      if (showToast && mounted) {
+        AppToast.show(context, 'Item dihapus dari list',
+            type: ToastType.success);
+      }
+    }
   }
 
-  double get _subtotal =>
-      _items.fold(0.0, (s, e) => s + e.subtotal);
+  void _addFromCatalog(ServiceItem item) {
+    if (_selectedCatalogIds.contains(item.id)) return;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => ConfirmDialog(
+        title: "Konfirmasi Tambah Layanan",
+        description: "Apakah item layanan yang Anda tambahkan sudah sesuai?",
+        confirmLabel: "Ya, Sesuai",
+        customWidget: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDCFCE7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF86EFAC)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: const Color(0xFF166534))),
+              const SizedBox(height: 4),
+              Text('${CurrencyFormatter.format(item.price)} / ${item.unit ?? 'item'}', style: GoogleFonts.plusJakartaSans(color: const Color(0xFF15803D))),
+            ],
+          ),
+        ),
+        onConfirm: () {
+          Navigator.pop(ctx);
+          setState(() {
+            _selectedCatalogIds.add(item.id);
+            _items.add(_ItemEntry(
+              catalogId: item.id,
+              name: item.name,
+              subItemName: null,
+              itemDescription: null,
+              description: item.category,
+              notes: null,
+              unitPrice: item.price,
+              unit: item.unit,
+              serviceType: _selectedServiceType,
+              initialQty: 1,
+            ));
+          });
+          AppToast.show(context, 'Item berhasil ditambahkan', type: ToastType.success);
+        },
+      ),
+    );
+  }
+
+  double get _subtotal => _items.fold(0.0, (s, e) => s + e.subtotal);
+
+  int get _totalPhysicalItems {
+    int total = 0;
+    for (final e in _items) {
+      final u = e.unit?.toLowerCase() ?? '';
+      final isArea = u.contains('m2') ||
+          u.contains('m²') ||
+          u == 'm' ||
+          u.contains('meter') ||
+          (e.areaSize != null && e.areaSize! > 0);
+      if (isArea) {
+        total += 1;
+      } else {
+        total += e.quantity.toInt();
+      }
+    }
+    return total;
+  }
+
+  void _showSubmitConfirmation() {
+    final isEditing = widget.job.finalItems.isNotEmpty ||
+        widget.job.status == JobStatus.waitingFinalItems ||
+        widget.job.status == JobStatus.invoiceGenerated ||
+        widget.job.status == JobStatus.completed;
+
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            isEditing
+                ? 'Konfirmasi Pembaruan'
+                : 'Konfirmasi Pengiriman Laporan',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEditing
+                    ? 'Final Item akan diperbarui dan otomatis memperbarui data yang telah dikirim ke Admin. Apakah Anda yakin ingin melanjutkan?'
+                    : 'Pastikan semua item yang Anda input sudah benar. Laporan yang dikirim akan diproses oleh admin dan digunakan untuk pembuatan invoice tagihan kepada customer.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Item:',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '$_totalPhysicalItems item',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total Tagihan:',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    CurrencyFormatter.format(_finalTotal),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: AppColors.inputBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _submit();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      isEditing ? 'Ya, Lanjutkan' : 'Kirim Laporan',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _submit() async {
     if (_items.isEmpty) return;
@@ -163,19 +376,50 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
 
     setState(() => _isSubmitting = true);
     try {
-      final payload = validItems
-          .map((e) => {
-                'item_name': e.name.trim(),
-                'quantity': e.quantity,
-                'final_price': e.unitPrice,
-              })
-          .toList();
+      final payload = validItems.map((e) {
+        final u = e.unit?.toLowerCase() ?? '';
+        final isArea = u.contains('m2') ||
+            u.contains('m²') ||
+            u == 'm' ||
+            u.contains('meter') ||
+            (e.areaSize != null && e.areaSize! > 0);
+
+        final map = <String, dynamic>{
+          'service_item_id': e.catalogId ?? e.serviceItemId,
+          'service_type': e.serviceType ??
+              (widget.job.services.isNotEmpty ? widget.job.services.first : ''),
+          'item_name': e.name.trim(),
+          'sub_item_name': e.subItemName,
+          'description': e.itemDescription,
+          'unit': e.unit,
+          'unit_price': e.unitPrice,
+          'final_price': e.unitPrice,
+          'subtotal': e.subtotal,
+          'selected': true,
+          'notes': e.notes ?? '',
+        };
+
+        if (isArea) {
+          map['area_size'] = e.quantity;
+        } else {
+          map['quantity'] = e.quantity.toInt();
+        }
+
+        return map;
+      }).toList();
       final notes = _notesCtrl.text.trim();
+      final discountType = _selectedPercent > 0
+          ? 'percentage'
+          : (_discountAmount > 0 ? 'nominal' : null);
+      final discountValue =
+          _selectedPercent > 0 ? _selectedPercent : _discountAmount;
+
       await widget.onSubmit(
         payload,
         notes.isEmpty ? null : notes,
-        _discountAmount,
-        _dpAmount,
+        discountType,
+        discountValue,
+        widget.job.minimumPayment ?? widget.job.downPayment,
       );
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
@@ -189,14 +433,13 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final catalogAsync =
-        ref.watch(catalogItemsProvider(_selectedServiceType));
+    final catalogAsync = ref.watch(catalogItemsProvider(_selectedServiceType));
     final bottom = MediaQuery.of(context).viewInsets.bottom;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.93,
       minChildSize: 0.5,
-      maxChildSize: 0.97,
+      maxChildSize: 0.95,
       expand: false,
       builder: (_, scrollCtrl) {
         return Container(
@@ -220,7 +463,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
                     AppSpacing.lg,
                     AppSpacing.md,
                     AppSpacing.lg,
-                    bottom + 100,
+                    bottom + 24,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +478,6 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
                       _buildSectionHeader(
                         icon: Icons.shopping_bag_outlined,
                         label: AppStrings.sectionSelectedItems,
-                        count: _items.length,
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       _buildSelectedItems(),
@@ -323,8 +565,8 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
           ),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close_rounded,
-                color: AppColors.textSecondary),
+            icon:
+                const Icon(Icons.close_rounded, color: AppColors.textSecondary),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -374,7 +616,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
   Widget _buildSectionHeader({
     required IconData icon,
     required String label,
-    int? count,
+    String? countText,
   }) {
     return Row(
       children: [
@@ -389,17 +631,16 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
             letterSpacing: 0.5,
           ),
         ),
-        if (count != null && count > 0) ...[
+        if (countText != null && countText.isNotEmpty && countText != '0') ...[
           const SizedBox(width: 6),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '$count',
+              countText,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -433,12 +674,11 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : const Color(0xFFF3F4F6),
+                  color:
+                      isSelected ? AppColors.primary : const Color(0xFFF3F4F6),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isSelected
@@ -451,9 +691,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isSelected
-                        ? Colors.white
-                        : AppColors.textSecondary,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -596,7 +834,9 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
 
     final groups = <String, List<ServiceItem>>{};
     for (final item in filtered) {
-      groups.putIfAbsent(item.category ?? AppStrings.otherCategory, () => []).add(item);
+      groups
+          .putIfAbsent(item.category ?? AppStrings.otherCategory, () => [])
+          .add(item);
     }
 
     return Column(
@@ -622,9 +862,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
       child: Column(
         children: [
           Icon(
-            query.isNotEmpty
-                ? Icons.search_off_rounded
-                : Icons.inbox_rounded,
+            query.isNotEmpty ? Icons.search_off_rounded : Icons.inbox_rounded,
             size: 32,
             color: AppColors.textHint,
           ),
@@ -651,10 +889,8 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
       child: Row(children: [
         const Expanded(child: Divider(color: Color(0xFFE5E7EB))),
         Container(
-          margin:
-              const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
           decoration: BoxDecoration(
             color: const Color(0xFFECFDF5),
             borderRadius: BorderRadius.circular(20),
@@ -678,7 +914,13 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: GestureDetector(
-        onTap: isSelected ? null : () => _addFromCatalog(item),
+        onTap: () {
+          if (isSelected) {
+            _removeFromCatalog(item.id);
+          } else {
+            _addFromCatalog(item);
+          }
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -914,11 +1156,10 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
           canDecrement ? () => setState(() => item.decrement()) : null,
         ),
         SizedBox(
-          width: 40,
+          width: 70,
           child: TextField(
             controller: item.qtyController,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
             ],
@@ -931,8 +1172,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
             ),
             decoration: const InputDecoration(
               isDense: true,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 2, vertical: 8),
               border: InputBorder.none,
             ),
           ),
@@ -958,15 +1198,13 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
                 : const Color(0xFFEEEEEE),
           ),
           borderRadius: BorderRadius.circular(6),
-          color: onTap != null
-              ? const Color(0xFFF9FAFB)
-              : const Color(0xFFF3F4F6),
+          color:
+              onTap != null ? const Color(0xFFF9FAFB) : const Color(0xFFF3F4F6),
         ),
         child: Icon(
           icon,
           size: 14,
-          color:
-              onTap != null ? AppColors.textSecondary : AppColors.textHint,
+          color: onTap != null ? AppColors.textSecondary : AppColors.textHint,
         ),
       ),
     );
@@ -1183,6 +1421,7 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
   // ── DP section ────────────────────────────────────────────────────────────
 
   Widget _buildDpSection() {
+    final minimumPayment = widget.job.minimumPayment ?? widget.job.downPayment;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1202,36 +1441,22 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          TextField(
-            controller: _dpCtrl,
-            keyboardType: TextInputType.number,
-            inputFormatters: [_ThousandSeparatorFormatter()],
-            onChanged: (_) => setState(() {}),
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 13, color: AppColors.textPrimary),
-            decoration: InputDecoration(
-              prefixText: AppStrings.rpPrefix,
-              prefixStyle: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, color: AppColors.textSecondary),
-              hintText: '0',
-              hintStyle: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, color: AppColors.textHint),
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7F7F5),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+              border: Border.all(color: const Color(0xFFD1D5DB)),
+            ),
+            child: Text(
+              '${AppStrings.rpPrefix} ${CurrencyFormatter.format(minimumPayment).replaceAll('Rp', '').trim()}',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-                borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-                borderSide: const BorderSide(color: AppColors.primary),
-              ),
-              filled: true,
-              fillColor: const Color(0xFFF7F7F5),
             ),
           ),
         ],
@@ -1289,7 +1514,8 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
       ),
       child: Column(
         children: [
-          _summaryRow(AppStrings.subtotalLabel, CurrencyFormatter.format(subtotal)),
+          _summaryRow(
+              AppStrings.subtotalLabel, CurrencyFormatter.format(subtotal)),
           _summaryRow(
             _discountLabel(),
             '- ${CurrencyFormatter.format(discount)}',
@@ -1411,11 +1637,16 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
 
   Widget _buildSubmitButton() {
     final canSubmit = _items.isNotEmpty && !_isSubmitting;
+    final isEditing = widget.job.finalItems.isNotEmpty ||
+        widget.job.status == JobStatus.waitingFinalItems ||
+        widget.job.status == JobStatus.invoiceGenerated ||
+        widget.job.status == JobStatus.completed;
+
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: canSubmit ? _submit : null,
+        onPressed: canSubmit ? _showSubmitConfirmation : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -1435,10 +1666,16 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.send_rounded, size: 18),
+                  Icon(
+                      isEditing
+                          ? Icons.check_circle_outline
+                          : Icons.send_rounded,
+                      size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    AppStrings.submitFinalReport,
+                    isEditing
+                        ? 'Update Final Item'
+                        : AppStrings.submitFinalReport,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -1456,10 +1693,16 @@ class _FinalItemsSheetState extends ConsumerState<FinalItemsSheet> {
 class _ItemEntry {
   _ItemEntry({
     this.catalogId,
+    this.serviceItemId,
     required this.name,
+    this.subItemName,
+    this.itemDescription,
     this.description,
+    this.notes,
     required this.unitPrice,
     this.unit,
+    this.areaSize,
+    this.serviceType,
     required double initialQty,
   }) : qtyController = TextEditingController(
           text: initialQty % 1 == 0
@@ -1468,17 +1711,31 @@ class _ItemEntry {
         );
 
   factory _ItemEntry.fromJobItem(JobItem item) => _ItemEntry(
+        catalogId: int.tryParse(item.serviceItemId ?? ''),
+        serviceItemId: int.tryParse(item.serviceItemId ?? ''),
         name: item.name,
-        description: item.description,
+        subItemName: item.subItemName,
+        itemDescription: item.description,
+        description: item.notes ?? item.description,
+        notes: item.notes,
         unitPrice: item.price,
+        unit: item.unit,
+        areaSize: item.areaSize,
+        serviceType: item.serviceType,
         initialQty: item.quantity,
       );
 
   final int? catalogId;
+  final int? serviceItemId;
   final String name;
+  final String? subItemName;
+  final String? itemDescription;
   final double unitPrice;
   final String? description;
+  final String? notes;
   final String? unit;
+  final double? areaSize;
+  final String? serviceType;
   final TextEditingController qtyController;
 
   double get quantity => double.tryParse(qtyController.text) ?? 0;
@@ -1486,14 +1743,12 @@ class _ItemEntry {
 
   void increment() {
     final q = quantity + 1;
-    qtyController.text =
-        q % 1 == 0 ? q.toInt().toString() : q.toString();
+    qtyController.text = q % 1 == 0 ? q.toInt().toString() : q.toString();
   }
 
   void decrement() {
-    final q = (quantity - 1).clamp(1.0, double.infinity);
-    qtyController.text =
-        q % 1 == 0 ? q.toInt().toString() : q.toString();
+    final q = (quantity - 1).clamp(0.5, double.infinity);
+    qtyController.text = q % 1 == 0 ? q.toInt().toString() : q.toString();
   }
 
   void dispose() {

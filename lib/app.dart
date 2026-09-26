@@ -45,18 +45,18 @@ class _AppState extends ConsumerState<App> {
               await repo.registerFcmToken(token);
             },
           );
-        } catch (_) {
-        }
+        } catch (_) {}
         ref.read(notificationProvider.notifier).refreshUnreadCount();
       } else if (previous is AuthAuthenticated && next is! AuthAuthenticated) {
         try {
           final token = await FcmService.instance.getToken();
           if (token != null) {
-            await ref.read(notificationRepositoryProvider).revokeFcmToken(token);
+            await ref
+                .read(notificationRepositoryProvider)
+                .revokeFcmToken(token);
           }
           await FcmService.instance.deleteToken();
-        } catch (_) {
-        }
+        } catch (_) {}
       }
     });
 

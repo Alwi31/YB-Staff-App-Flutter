@@ -7,9 +7,13 @@ import 'package:yb_staff_app/core/theme/app_spacing.dart';
 import 'package:yb_staff_app/core/theme/app_typography.dart';
 import 'package:yb_staff_app/core/utils/currency_formatter.dart';
 import 'package:yb_staff_app/core/utils/date_formatter.dart';
+import 'package:yb_staff_app/core/utils/item_formatter.dart';
 import 'package:yb_staff_app/domain/entities/job.dart';
 import 'package:yb_staff_app/domain/entities/job_item.dart';
+import 'package:yb_staff_app/domain/entities/hourly_details.dart';
 import 'package:yb_staff_app/presentation/widgets/final_items_sheet.dart';
+import 'package:yb_staff_app/presentation/widgets/confirm_dialog.dart';
+import 'package:yb_staff_app/presentation/widgets/hourly_report_sheet.dart';
 
 class JobCard extends StatefulWidget {
   const JobCard({
@@ -126,10 +130,40 @@ class _JobCardState extends State<JobCard> {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  // Nama customer
-                  Text(
-                    job.customerName,
-                    style: AppTypography.headingLarge.copyWith(fontSize: 16),
+                  // Nama customer & Status
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          job.customerName,
+                          style:
+                              AppTypography.headingLarge.copyWith(fontSize: 16),
+                        ),
+                      ),
+                      if (job.customerStatus != null &&
+                          job.customerStatus!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: job.customerStatus!.toUpperCase() == 'NEW'
+                                ? const Color(
+                                    0xFF16A34A) // green-600 (Web UI match)
+                                : const Color(
+                                    0xFF3B82F6), // blue-500 (Web UI match)
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            job.customerStatus!.toUpperCase(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   // Jadwal
@@ -144,11 +178,34 @@ class _JobCardState extends State<JobCard> {
                   const SizedBox(height: AppSpacing.lg),
                   // Tombol Buka Navigasi
                   _NavButton(onTap: _openMaps),
+                  if (job.notes != null && job.notes!.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusButton),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Text(
+                        'Catatan: ${job.notes}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD97706),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.sm),
-                  // Tombol aksi (Mulai / Selesai / disabled)
+                  // Tombol aksi (Mulai / Selesai / Edit Final Item / disabled)
                   _ActionButton(
                     status: job.status,
                     isLoading: _isUpdating,
+                    finalItemsEditable: job.finalItemsEditable,
                     onTap: _buildActionCallback(context, job.status),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -176,14 +233,20 @@ class _JobCardState extends State<JobCard> {
                       ),
                     ),
                   ),
+                  if (job.isHourly && job.hourlyDetails != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _HourlySummarySection(details: job.hourlyDetails!, job: job),
+                  ],
                   Builder(builder: (_) {
                     final showFinal =
-                        job.status == JobStatus.invoiceGenerated ||
-                            job.status == JobStatus.completed;
-                    final cardItems =
-                        showFinal ? job.finalItems : job.items;
-                    final cardTitle =
-                        showFinal ? AppStrings.finalItemsTag : AppStrings.estimatedItemsTag;
+                        (job.status == JobStatus.waitingFinalItems ||
+                                job.status == JobStatus.invoiceGenerated ||
+                                job.status == JobStatus.completed) &&
+                            job.finalItems.isNotEmpty;
+                    final cardItems = showFinal ? job.finalItems : job.items;
+                    final cardTitle = showFinal
+                        ? AppStrings.finalItemsTag
+                        : AppStrings.estimatedItemsTag;
                     if (cardItems.isEmpty) return const SizedBox.shrink();
                     return Column(
                       children: [
@@ -214,8 +277,27 @@ class _JobCardState extends State<JobCard> {
     if (_isUpdating) return null;
     switch (status) {
       case JobStatus.assigned:
-        return () => _handleStatusUpdate(JobStatus.inProgress);
+        return () {
+          showDialog(
+            context: context,
+            builder: (ctx) => ConfirmDialog(
+              title: "Mulai Pekerjaan",
+              description: "Apakah Anda yakin ingin memulai pekerjaan ini sekarang?",
+              confirmLabel: "Ya, Mulai",
+              onConfirm: () {
+                Navigator.pop(ctx);
+                _handleStatusUpdate(JobStatus.inProgress);
+              },
+            ),
+          );
+        };
       case JobStatus.inProgress:
+        if (widget.job.isHourly) {
+          return () => HourlyReportSheet.show(
+                context,
+                job: widget.job,
+              );
+        }
         return () => FinalItemsSheet.show(
               context,
               job: widget.job,
@@ -224,6 +306,20 @@ class _JobCardState extends State<JobCard> {
       case JobStatus.waitingFinalItems:
       case JobStatus.invoiceGenerated:
       case JobStatus.completed:
+        if (widget.job.finalItemsEditable) {
+          if (widget.job.isHourly) {
+            return () => HourlyReportSheet.show(
+                  context,
+                  job: widget.job,
+                );
+          }
+          return () => FinalItemsSheet.show(
+                context,
+                job: widget.job,
+                onSubmit: widget.onFinalItemsSubmit,
+              );
+        }
+        return null;
       case JobStatus.canceled:
         return null;
     }
@@ -237,24 +333,113 @@ class _ServiceBadge extends StatelessWidget {
   final String label;
 
   static const _styles = <String, _ServiceStyle>{
+    // Add on
+    'add_on': _ServiceStyle(
+        icon: Icons.inventory_2_outlined,
+        bg: Color(0xFFFFEDD5),
+        fg: Color(0xFFEA580C),
+        display: 'Add On'),
+    'addon': _ServiceStyle(
+        icon: Icons.inventory_2_outlined,
+        bg: Color(0xFFFFEDD5),
+        fg: Color(0xFFEA580C),
+        display: 'Add On'),
     // Leather / sofa
-    'leather':     _ServiceStyle(icon: Icons.chair_rounded,           bg: Color(0xFFFEF3C7), fg: Color(0xFFD97706), display: 'Leather Revive'),
-    'sofa':        _ServiceStyle(icon: Icons.chair_rounded,           bg: Color(0xFFFEF3C7), fg: Color(0xFFD97706), display: 'Sofa'),
+    'leather': _ServiceStyle(
+        icon: Icons.chair_rounded,
+        bg: Color(0xFFFEF3C7),
+        fg: Color(0xFFD97706),
+        display: 'Leather Revive'),
+    'sofa': _ServiceStyle(
+        icon: Icons.chair_rounded,
+        bg: Color(0xFFFEF3C7),
+        fg: Color(0xFFD97706),
+        display: 'Sofa'),
     // Vacuum / deep vacuum
-    'vacuum':      _ServiceStyle(icon: Icons.air_rounded,             bg: Color(0xFFDBEAFE), fg: Color(0xFF2563EB), display: 'Deep Vacuum'),
-    'deep_vacuum': _ServiceStyle(icon: Icons.air_rounded,             bg: Color(0xFFDBEAFE), fg: Color(0xFF2563EB), display: 'Deep Vacuum'),
-    // Laundry / dry wash
-    'dry':         _ServiceStyle(icon: Icons.water_drop_outlined,     bg: Color(0xFFCFFAFE), fg: Color(0xFF0891B2), display: 'Cuci Dry Wash'),
-    'laundry':     _ServiceStyle(icon: Icons.local_laundry_service_rounded, bg: Color(0xFFCFFAFE), fg: Color(0xFF0891B2), display: 'Laundry'),
-    'cuci':        _ServiceStyle(icon: Icons.water_drop_outlined,     bg: Color(0xFFCFFAFE), fg: Color(0xFF0891B2), display: 'Cuci'),
+    'vacuum': _ServiceStyle(
+        icon: Icons.air_rounded,
+        bg: Color(0xFFDBEAFE),
+        fg: Color(0xFF2563EB),
+        display: 'HydroVacuum Plus'),
+    'deep_vacuum': _ServiceStyle(
+        icon: Icons.air_rounded,
+        bg: Color(0xFFDBEAFE),
+        fg: Color(0xFF2563EB),
+        display: 'HydroVacuum Plus'),
+    'hydrovacuum': _ServiceStyle(
+        icon: Icons.air_rounded,
+        bg: Color(0xFFE0F2FE),
+        fg: Color(0xFF0EA5E9),
+        display: 'HydroVacuum'), // sky
+    // Laundry / dry wash / cuci standar
+    'dry': _ServiceStyle(
+        icon: Icons.water_drop_outlined,
+        bg: Color(0xFFCFFAFE),
+        fg: Color(0xFF0891B2),
+        display: 'Cuci Dry Wash'), // cyan
+    'cuci_dry_wash': _ServiceStyle(
+        icon: Icons.water_drop_outlined,
+        bg: Color(0xFFCFFAFE),
+        fg: Color(0xFF0891B2),
+        display: 'Cuci Dry Wash'), // cyan
+    'cuci_standar': _ServiceStyle(
+        icon: Icons.water_drop_outlined,
+        bg: Color(0xFFD1FAE5),
+        fg: Color(0xFF10B981),
+        display: 'Cuci Standar'), // emerald
+    'laundry': _ServiceStyle(
+        icon: Icons.local_laundry_service_rounded,
+        bg: Color(0xFFCFFAFE),
+        fg: Color(0xFF0891B2),
+        display: 'Laundry'),
+    'cuci': _ServiceStyle(
+        icon: Icons.water_drop_outlined,
+        bg: Color(0xFFD1FAE5),
+        fg: Color(0xFF10B981),
+        display: 'Cuci'),
     // Disinfeksi
-    'disinfeksi':  _ServiceStyle(icon: Icons.shield_outlined,         bg: Color(0xFFEDE9FE), fg: Color(0xFF7C3AED), display: 'Disinfeksi'),
-    'disinfect':   _ServiceStyle(icon: Icons.shield_outlined,         bg: Color(0xFFEDE9FE), fg: Color(0xFF7C3AED), display: 'Disinfeksi'),
+    'disinfeksi': _ServiceStyle(
+        icon: Icons.shield_outlined,
+        bg: Color(0xFFEDE9FE),
+        fg: Color(0xFF7C3AED),
+        display: 'Disinfeksi'),
+    'disinfect': _ServiceStyle(
+        icon: Icons.shield_outlined,
+        bg: Color(0xFFEDE9FE),
+        fg: Color(0xFF7C3AED),
+        display: 'Disinfeksi'),
     // AC
-    'ac':          _ServiceStyle(icon: Icons.ac_unit_rounded,         bg: Color(0xFFE0F2FE), fg: Color(0xFF0284C7), display: 'Servis AC'),
-    // General cleaning
-    'general':     _ServiceStyle(icon: Icons.cleaning_services_rounded, bg: Color(0xFFDCFCE7), fg: Color(0xFF16A34A), display: 'General Cleaning'),
-    'regular':     _ServiceStyle(icon: Icons.cleaning_services_rounded, bg: Color(0xFFDCFCE7), fg: Color(0xFF16A34A), display: 'Regular'),
+    'ac': _ServiceStyle(
+        icon: Icons.ac_unit_rounded,
+        bg: Color(0xFFE0F2FE),
+        fg: Color(0xFF0284C7),
+        display: 'Servis AC'),
+    // Hourly cleaning
+    'general': _ServiceStyle(
+        icon: Icons.cleaning_services_rounded,
+        bg: Color(0xFFCCFBF1),
+        fg: Color(0xFF14B8A6),
+        display: 'General Cleaning'), // teal
+    'general_cleaning': _ServiceStyle(
+        icon: Icons.cleaning_services_rounded,
+        bg: Color(0xFFCCFBF1),
+        fg: Color(0xFF14B8A6),
+        display: 'General Cleaning'), // teal
+    'daily': _ServiceStyle(
+        icon: Icons.cleaning_services_rounded,
+        bg: Color(0xFFECFCCB),
+        fg: Color(0xFF84CC16),
+        display: 'Daily Cleaning'), // lime
+    'daily_cleaning': _ServiceStyle(
+        icon: Icons.cleaning_services_rounded,
+        bg: Color(0xFFECFCCB),
+        fg: Color(0xFF84CC16),
+        display: 'Daily Cleaning'), // lime
+    'regular': _ServiceStyle(
+        icon: Icons.cleaning_services_rounded,
+        bg: Color(0xFFDCFCE7),
+        fg: Color(0xFF16A34A),
+        display: 'Regular'),
   };
 
   _ServiceStyle _resolve() {
@@ -484,11 +669,13 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.status,
     required this.isLoading,
+    this.finalItemsEditable = false,
     required this.onTap,
   });
 
   final JobStatus status;
   final bool isLoading;
+  final bool finalItemsEditable;
   final VoidCallback? onTap;
 
   Color get _bgColor {
@@ -541,6 +728,46 @@ class _ActionButton extends StatelessWidget {
         status == JobStatus.completed;
 
     if (isDone) {
+      if (finalItemsEditable && onTap != null) {
+        return SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton(
+            onPressed: isLoading ? null : onTap,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+              foregroundColor: const Color(0xFF3B82F6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusButton),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        color: Color(0xFF3B82F6), strokeWidth: 2),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check,
+                          size: 16, color: Color(0xFF3B82F6)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Edit Final Item',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        );
+      }
+
       IconData doneIcon;
       String doneLabel;
       if (status == JobStatus.waitingFinalItems) {
@@ -560,14 +787,20 @@ class _ActionButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(doneIcon, size: 16, color: AppColors.textSecondary),
+            Icon(doneIcon,
+                size: 16,
+                color: status == JobStatus.waitingFinalItems
+                    ? AppColors.textSecondary
+                    : const Color(0xFF10B981)),
             const SizedBox(width: AppSpacing.xs),
             Text(
               doneLabel,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+                color: status == JobStatus.waitingFinalItems
+                    ? AppColors.textSecondary
+                    : const Color(0xFF10B981),
               ),
             ),
           ],
@@ -684,7 +917,7 @@ class _ItemsSection extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      item.name,
+                      '${item.name} (${ItemFormatter.formatQuantityLabel(quantity: item.quantity, areaSize: item.areaSize, unit: item.unit)})',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -707,7 +940,8 @@ class _ItemsSection extends StatelessWidget {
           ),
           const Divider(height: AppSpacing.lg, color: Color(0xFFE5E7EB)),
           if (discount > 0) ...[
-            _cardPriceRow(AppStrings.subtotalLabel, CurrencyFormatter.format(subtotal)),
+            _cardPriceRow(
+                AppStrings.subtotalLabel, CurrencyFormatter.format(subtotal)),
             const SizedBox(height: 4),
             _cardPriceRow(
               _discountLabel,
@@ -743,7 +977,8 @@ class _ItemsSection extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             const Divider(height: 1, color: Color(0xFFE5E7EB)),
             const SizedBox(height: AppSpacing.sm),
-            _cardPriceRow(AppStrings.downPaymentLabel, CurrencyFormatter.format(downPayment)),
+            _cardPriceRow(AppStrings.downPaymentLabel,
+                CurrencyFormatter.format(downPayment)),
             const SizedBox(height: AppSpacing.sm),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -821,3 +1056,111 @@ class _ItemsSection extends StatelessWidget {
     );
   }
 }
+
+class _HourlySummarySection extends StatelessWidget {
+  const _HourlySummarySection({required this.details, required this.job});
+  final HourlyDetails details;
+  final Job job;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'LAYANAN PER JAM (CLEANING)',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF4B5563),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${CurrencyFormatter.format(details.hourlyRateSnapshot)}/jam/org',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF166534),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _row('Wilayah:', job.region ?? details.serviceAreaName ?? '-'),
+          const SizedBox(height: 6),
+          _row(
+            job.hourlyReport != null ? 'Durasi Aktual:' : 'Estimasi Durasi:',
+            '${(job.hourlyReport?.actualDurationHours ?? details.plannedDurationHours).toStringAsFixed((job.hourlyReport?.actualDurationHours ?? details.plannedDurationHours) % 1 == 0 ? 0 : 1)} Jam (${job.hourlyReport?.actualCleanerCount ?? details.plannedCleanerCount} Cleaner)',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                job.hourlyReport != null ? 'Total Aktual:' : 'Total Estimasi:',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                CurrencyFormatter.format(job.hourlyReport?.finalTotalPrice ?? details.estimatedTotal),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF065F46),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

@@ -16,6 +16,7 @@ import 'package:yb_staff_app/presentation/providers/jobs_provider.dart';
 import 'package:yb_staff_app/presentation/providers/notification_provider.dart';
 import 'package:yb_staff_app/presentation/widgets/change_password_sheet.dart';
 import 'package:yb_staff_app/presentation/widgets/empty_jobs.dart';
+import 'package:yb_staff_app/presentation/widgets/confirm_dialog.dart';
 import 'package:yb_staff_app/presentation/widgets/job_card.dart';
 import 'package:yb_staff_app/presentation/widgets/job_card_skeleton.dart';
 import 'package:yb_staff_app/presentation/widgets/job_detail_sheet.dart';
@@ -24,11 +25,18 @@ import 'package:yb_staff_app/presentation/widgets/profile_sheet.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  static Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+  static Future<void> _confirmLogout(
+      BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (_) => const _LogoutDialog(),
+      builder: (_) => ConfirmDialog(
+        title: "Konfirmasi Keluar",
+        description: "Apakah Anda yakin ingin keluar dari akun Anda?",
+        confirmLabel: "Ya, Keluar",
+        isDanger: true,
+        onConfirm: () => Navigator.of(_).pop(true),
+      ),
     );
     if (confirmed != true) return;
     if (!context.mounted) return;
@@ -83,6 +91,7 @@ class HomeScreen extends ConsumerWidget {
           _SummaryBar(
             totalJobs: jobs.length,
             completedJobs: completedCount,
+            selectedDate: selectedDate,
           ),
           // ── Scrollable body ───────────────────────────────────────────────
           Expanded(
@@ -127,8 +136,8 @@ class HomeScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: AppSpacing.xl),
                             ElevatedButton.icon(
-                              onPressed: () => ref.invalidate(
-                                  jobsByDateProvider(selectedDate)),
+                              onPressed: () => ref
+                                  .invalidate(jobsByDateProvider(selectedDate)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
@@ -166,8 +175,8 @@ class HomeScreen extends ConsumerWidget {
                         itemCount: jobs.length,
                         itemBuilder: (context, index) {
                           final job = jobs[index];
-                          final notifier = ref.read(
-                              jobsByDateProvider(selectedDate).notifier);
+                          final notifier = ref
+                              .read(jobsByDateProvider(selectedDate).notifier);
                           return JobCard(
                             job: job,
                             onStatusUpdate: (newStatus) async {
@@ -184,21 +193,31 @@ class HomeScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   AppToast.show(
                                     context,
-                                    e.toString().replaceFirst('Exception: ', ''),
+                                    e
+                                        .toString()
+                                        .replaceFirst('Exception: ', ''),
                                     type: ToastType.error,
                                   );
                                 }
                                 rethrow;
                               }
                             },
-                            onFinalItemsSubmit: (items, notes, discountAmount, downPayment) async {
+                            onFinalItemsSubmit: (items, notes, discountType,
+                                discountValue, downPayment) async {
+                              final isUpdate = job.finalItems.isNotEmpty ||
+                                  job.status == JobStatus.waitingFinalItems ||
+                                  job.status == JobStatus.invoiceGenerated ||
+                                  job.status == JobStatus.completed;
+
                               try {
                                 await notifier.submitFinalItems(
                                   job.id,
                                   items,
                                   notes: notes,
-                                  discountAmount: discountAmount,
+                                  discountType: discountType,
+                                  discountValue: discountValue,
                                   downPayment: downPayment,
+                                  isUpdate: isUpdate,
                                 );
                                 if (context.mounted) {
                                   AppToast.show(
@@ -211,7 +230,9 @@ class HomeScreen extends ConsumerWidget {
                                 if (context.mounted) {
                                   AppToast.show(
                                     context,
-                                    e.toString().replaceFirst('Exception: ', ''),
+                                    e
+                                        .toString()
+                                        .replaceFirst('Exception: ', ''),
                                     type: ToastType.error,
                                   );
                                 }
@@ -311,14 +332,12 @@ class _HomeHeader extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-                  ),
+                  color: Colors.transparent,
+                  alignment: Alignment.center,
                   child: const Icon(
                     Icons.notifications_outlined,
                     color: Colors.white,
-                    size: 22,
+                    size: 24,
                   ),
                 ),
                 if (unreadCount > 0)
@@ -375,38 +394,60 @@ class _HomeHeader extends StatelessWidget {
               if (onInspectorTap != null)
                 _menuItem('inspector', Icons.bug_report_outlined,
                     AppStrings.menuHttpInspector, AppColors.primary),
-              _menuItem('logout', Icons.logout_rounded,
-                  AppStrings.menuLogout, AppColors.error),
+              _menuItem('logout', Icons.logout_rounded, AppStrings.menuLogout,
+                  AppColors.error),
             ],
-            child: Row(
-              children: [
-                Builder(builder: (_) {
-                  final url = user?.avatarUrl;
-                  final hasAvatar = url != null && url.isNotEmpty;
-                  return CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.primaryLight,
-                    backgroundImage:
-                        hasAvatar ? NetworkImage(url) : null,
-                    child: hasAvatar
-                        ? null
-                        : Text(
-                            _initials(user?.name),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
+            child: Container(
+              padding:
+                  const EdgeInsets.only(left: 4, right: 8, top: 4, bottom: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(30),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Row(
+                children: [
+                  Builder(builder: (_) {
+                    final url = user?.avatarUrl;
+                    final hasAvatar = url != null && url.isNotEmpty;
+                    final isMitra = user?.isMitra ?? false;
+                    final bgColor = isMitra
+                        ? const Color(0xFFF97316)
+                        : const Color(0xFF154D2E);
+
+                    return Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        shape: BoxShape.circle,
+                        image: hasAvatar
+                            ? DecorationImage(
+                                image: NetworkImage(url),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: hasAvatar
+                          ? null
+                          : Text(
+                              _initials(user?.name),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                  );
-                }),
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white.withAlpha(204),
-                  size: 20,
-                ),
-              ],
+                    );
+                  }),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -547,13 +588,22 @@ class _SummaryBar extends StatelessWidget {
   const _SummaryBar({
     required this.totalJobs,
     required this.completedJobs,
+    required this.selectedDate,
   });
 
   final int totalJobs;
   final int completedJobs;
+  final DateTime selectedDate;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isToday = selectedDate.year == now.year &&
+        selectedDate.month == now.month &&
+        selectedDate.day == now.day;
+    final dateLabel =
+        isToday ? 'pekerjaan hari ini' : 'pekerjaan di tanggal ini';
+
     return Container(
       color: AppColors.primary,
       padding: const EdgeInsets.fromLTRB(
@@ -566,7 +616,7 @@ class _SummaryBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '$totalJobs ${AppStrings.jobsOnDate}',
+            '$totalJobs $dateLabel',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -592,113 +642,6 @@ class _SummaryBar extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Logout confirmation dialog ────────────────────────────────────────────────
-
-class _LogoutDialog extends StatelessWidget {
-  const _LogoutDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.radiusSheet),
-      ),
-      backgroundColor: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusCard),
-              ),
-              child: const Icon(
-                Icons.logout_rounded,
-                color: AppColors.error,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              AppStrings.logoutTitle,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              AppStrings.logoutConfirm,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: Color(0xFFD1D5DB)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusButton),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.md),
-                    ),
-                    child: Text(
-                      AppStrings.cancel,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.error,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusButton),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.md),
-                    ),
-                    child: Text(
-                      AppStrings.menuLogout,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

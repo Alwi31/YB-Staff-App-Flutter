@@ -7,6 +7,8 @@ class User {
     required this.token,
     this.phone,
     this.avatarUrl,
+    this.employmentType = 'internal_fulltime',
+    this.isMitra = false,
   });
 
   final int id;
@@ -16,6 +18,8 @@ class User {
   final String token;
   final String? phone;
   final String? avatarUrl;
+  final String employmentType;
+  final bool isMitra;
 
   User copyWith({
     int? id,
@@ -25,6 +29,8 @@ class User {
     String? token,
     String? phone,
     String? avatarUrl,
+    String? employmentType,
+    bool? isMitra,
   }) {
     return User(
       id: id ?? this.id,
@@ -34,6 +40,8 @@ class User {
       token: token ?? this.token,
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      employmentType: employmentType ?? this.employmentType,
+      isMitra: isMitra ?? this.isMitra,
     );
   }
 

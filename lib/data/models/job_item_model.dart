@@ -8,6 +8,14 @@ class JobItemModel {
     required this.price,
     required this.subtotal,
     this.description,
+    this.areaSize,
+    this.length,
+    this.width,
+    this.unit,
+    this.serviceType,
+    this.subItemName,
+    this.serviceItemId,
+    this.notes,
   });
 
   final int id;
@@ -16,6 +24,14 @@ class JobItemModel {
   final double price;
   final double subtotal;
   final String? description;
+  final double? areaSize;
+  final double? length;
+  final double? width;
+  final String? unit;
+  final String? serviceType;
+  final String? subItemName;
+  final String? serviceItemId;
+  final String? notes;
 
   factory JobItemModel.fromJson(Map<String, dynamic> json) {
     final quantity = (json['quantity'] as num?)?.toDouble() ??
@@ -36,6 +52,14 @@ class JobItemModel {
       subtotal: subtotal,
       description: json['item_category_name'] as String? ??
           json['description'] as String?,
+      areaSize: (json['area_size'] as num?)?.toDouble(),
+      length: (json['length'] as num?)?.toDouble(),
+      width: (json['width'] as num?)?.toDouble(),
+      unit: json['unit'] as String?,
+      serviceType: json['service_type'] as String?,
+      subItemName: json['sub_item_name'] as String?,
+      serviceItemId: json['service_item_id']?.toString(),
+      notes: json['notes'] as String?,
     );
   }
 
@@ -46,5 +70,13 @@ class JobItemModel {
         price: price,
         subtotal: subtotal,
         description: description,
+        areaSize: areaSize,
+        length: length,
+        width: width,
+        unit: unit,
+        serviceType: serviceType,
+        subItemName: subItemName,
+        serviceItemId: serviceItemId,
+        notes: notes,
       );
 }

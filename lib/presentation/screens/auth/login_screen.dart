@@ -87,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.primary.withAlpha(76),  // ~30% atas
+                    AppColors.primary.withAlpha(76), // ~30% atas
                     AppColors.primary.withAlpha(140), // ~55% tengah
                     AppColors.primary.withAlpha(200), // ~78% bawah
                   ],
@@ -291,4 +291,3 @@ class _HeadingSection extends StatelessWidget {
     );
   }
 }
-

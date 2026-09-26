@@ -43,8 +43,8 @@ class AppTextField extends StatelessWidget {
           enabled: enabled,
           validator: validator,
           textInputAction: textInputAction,
-          style: AppTypography.labelMedium
-              .copyWith(color: AppColors.textPrimary),
+          style:
+              AppTypography.labelMedium.copyWith(color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon != null

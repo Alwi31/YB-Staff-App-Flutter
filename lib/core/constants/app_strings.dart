@@ -19,7 +19,8 @@ abstract final class AppStrings {
 
   // ── Login ──────────────────────────────────────────────────────────────────
   static const String loginTitle = 'Masuk ke Sistem';
-  static const String loginSubtitle = 'Gunakan akun staff untuk mengakses aplikasi.';
+  static const String loginSubtitle =
+      'Gunakan akun staff untuk mengakses aplikasi.';
   static const String loginButton = 'Masuk';
   static const String emailLabel = 'Email';
   static const String emailHint = 'Masukkan email';
@@ -51,7 +52,8 @@ abstract final class AppStrings {
   static const String failedMarkAllNotif = 'Gagal menandai semua notifikasi';
   static const String failedLoadJobDetail = 'Gagal memuat detail pekerjaan';
   static const String noNotifications = 'Belum ada notifikasi';
-  static const String noNotificationsDesc = 'Notifikasi pekerjaan akan muncul di sini.';
+  static const String noNotificationsDesc =
+      'Notifikasi pekerjaan akan muncul di sini.';
   static const String viewJob = '• Lihat pekerjaan';
 
   // ── Change Password ────────────────────────────────────────────────────────
@@ -65,9 +67,12 @@ abstract final class AppStrings {
   static const String oldPasswordEmpty = 'Kata sandi lama wajib diisi';
   static const String newPasswordEmpty = 'Kata sandi baru wajib diisi';
   static const String newPasswordMin = 'Minimal 8 karakter';
-  static const String newPasswordSameAsOld = 'Kata sandi baru tidak boleh sama dengan yang lama';
-  static const String confirmPasswordEmpty = 'Konfirmasi kata sandi wajib diisi';
-  static const String confirmPasswordMismatch = 'Konfirmasi kata sandi tidak sesuai';
+  static const String newPasswordSameAsOld =
+      'Kata sandi baru tidak boleh sama dengan yang lama';
+  static const String confirmPasswordEmpty =
+      'Konfirmasi kata sandi wajib diisi';
+  static const String confirmPasswordMismatch =
+      'Konfirmasi kata sandi tidak sesuai';
   static const String passwordChanged = 'Kata sandi berhasil diubah';
 
   // ── Profile ────────────────────────────────────────────────────────────────
@@ -85,7 +90,8 @@ abstract final class AppStrings {
 
   // ── Empty Jobs ─────────────────────────────────────────────────────────────
   static const String noJobsTitle = 'Tidak ada pekerjaan\ndi tanggal ini';
-  static const String noJobsDesc = 'Tidak ada job yang di-assign\npada tanggal yang dipilih.';
+  static const String noJobsDesc =
+      'Tidak ada job yang di-assign\npada tanggal yang dipilih.';
 
   // ── Job Card ───────────────────────────────────────────────────────────────
   static const String openNavigation = 'Buka Navigasi';
@@ -95,7 +101,8 @@ abstract final class AppStrings {
   static const String sessionPagi = 'Pagi';
   static const String sessionSiang = 'Siang';
   static const String sessionSore = 'Sore';
-  static const String waitingVerification = 'Menunggu Verifikasi Item dan Invoice';
+  static const String waitingVerification =
+      'Menunggu Verifikasi Item dan Invoice';
   static const String jobDone = 'Selesai';
   static const String jobCanceled = 'Pekerjaan Dibatalkan';
   static const String startJob = 'Mulai Pekerjaan';
@@ -130,16 +137,20 @@ abstract final class AppStrings {
   static const String sectionSelectedItems = 'ITEM DIPILIH';
   static const String sectionAdditionalNotes = 'CATATAN TAMBAHAN';
   static const String searchHint = 'Cari item, ukuran… contoh: King, 2×2m';
-  static const String additionalNotesHint = 'Catatan untuk laporan akhir (opsional)';
+  static const String additionalNotesHint =
+      'Catatan untuk laporan akhir (opsional)';
   static const String addChangeItems = 'Tambah / Ubah Item dari Layanan';
-  static const String addItemsDesc = 'Buka hanya jika ada perubahan atau tambahan item.';
+  static const String addItemsDesc =
+      'Buka hanya jika ada perubahan atau tambahan item.';
   static const String discountNominalLabel = 'Diskon Nominal';
   static const String dpLabel = 'DP (Down Payment)';
   static const String layananFinal = 'Layanan Final';
-  static const String noItemsSelected = 'Belum ada item.\nPilih dari katalog di bawah.';
+  static const String noItemsSelected =
+      'Belum ada item.\nPilih dari katalog di bawah.';
   static const String failedLoadCatalog = 'Gagal memuat katalog';
   static const String noMatchingItems = 'Tidak ada item cocok';
   static const String noItemsForService = 'Tidak ada item untuk layanan ini.';
-  static const String prefilledBannerSuffix = 'estimasi item telah dimuat. Edit jumlah atau hapus jika tidak sesuai.';
+  static const String prefilledBannerSuffix =
+      'estimasi item telah dimuat. Edit jumlah atau hapus jika tidak sesuai.';
   static const String submitFinalReport = 'Kirim Laporan Akhir';
 }

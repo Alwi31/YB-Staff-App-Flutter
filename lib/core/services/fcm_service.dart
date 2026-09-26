@@ -115,9 +115,8 @@ class FcmService {
       );
 
       if (Platform.isAndroid) {
-        final androidPlugin = _localNotif
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
+        final androidPlugin = _localNotif.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
         await androidPlugin?.createNotificationChannel(
           const AndroidNotificationChannel(
             _kChannelId,
@@ -199,9 +198,8 @@ class FcmService {
     final title = message.notification?.title ??
         message.data['title'] as String? ??
         'Notifikasi Baru';
-    final body = message.notification?.body ??
-        message.data['message'] as String? ??
-        '';
+    final body =
+        message.notification?.body ?? message.data['message'] as String? ?? '';
     final payload = message.data['order_id']?.toString() ??
         message.data['job_id']?.toString();
 
