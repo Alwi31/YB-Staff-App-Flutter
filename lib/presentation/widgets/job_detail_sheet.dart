@@ -243,21 +243,46 @@ class _JobDetailSheetState extends State<JobDetailSheet> {
   }
 
   Widget _buildNotesSection() {
+    final hasHourlyNotes = widget.job.isHourly &&
+        widget.job.hourlyReport?.notes != null &&
+        widget.job.hourlyReport!.notes!.isNotEmpty;
+    final hasGeneralNotes =
+        widget.job.notes != null && widget.job.notes!.isNotEmpty;
+
     return _section(
       title: AppStrings.sectionNotes,
       children: [
-        Text(
-          widget.job.notes ?? AppStrings.noNotes,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 13,
-            fontWeight: FontWeight.w400,
-            color: widget.job.notes != null
-                ? AppColors.textPrimary
-                : AppColors.textHint,
-            fontStyle:
-                widget.job.notes != null ? FontStyle.normal : FontStyle.italic,
+        if (hasHourlyNotes) ...[
+          Text(
+            widget.job.hourlyReport!.notes!,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textPrimary,
+            ),
           ),
-        ),
+          if (hasGeneralNotes) const SizedBox(height: 12),
+        ],
+        if (hasGeneralNotes) ...[
+          Text(
+            widget.job.notes!,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+        if (!hasHourlyNotes && !hasGeneralNotes)
+          Text(
+            AppStrings.noNotes,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textHint,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
       ],
     );
   }
@@ -848,7 +873,7 @@ class _JobDetailSheetState extends State<JobDetailSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _section(
-          title: 'Ringkasan Laporan Jam Kerja',
+          title: 'Estimasi Jam Kerja',
           children: [
             _infoRow(
                 'Tarif', '${CurrencyFormatter.format(tarif)} / jam / cleaner'),

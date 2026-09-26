@@ -178,6 +178,30 @@ class _JobCardState extends State<JobCard> {
                   const SizedBox(height: AppSpacing.lg),
                   // Tombol Buka Navigasi
                   _NavButton(onTap: _openMaps),
+                  if (job.isHourly &&
+                      job.hourlyReport?.notes != null &&
+                      job.hourlyReport!.notes!.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusButton),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: Text(
+                        'Catatan Pengerjaan: ${job.hourlyReport!.notes}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFFD97706),
+                        ),
+                      ),
+                    ),
+                  ],
                   if (job.notes != null && job.notes!.isNotEmpty) ...[
                     const SizedBox(height: AppSpacing.sm),
                     Container(
@@ -235,7 +259,8 @@ class _JobCardState extends State<JobCard> {
                   ),
                   if (job.isHourly && job.hourlyDetails != null) ...[
                     const SizedBox(height: AppSpacing.md),
-                    _HourlySummarySection(details: job.hourlyDetails!, job: job),
+                    _HourlySummarySection(
+                        details: job.hourlyDetails!, job: job),
                   ],
                   Builder(builder: (_) {
                     final showFinal =
@@ -282,7 +307,8 @@ class _JobCardState extends State<JobCard> {
             context: context,
             builder: (ctx) => ConfirmDialog(
               title: "Mulai Pekerjaan",
-              description: "Apakah Anda yakin ingin memulai pekerjaan ini sekarang?",
+              description:
+                  "Apakah Anda yakin ingin memulai pekerjaan ini sekarang?",
               confirmLabel: "Ya, Mulai",
               onConfirm: () {
                 Navigator.pop(ctx);
@@ -1121,7 +1147,8 @@ class _HourlySummarySection extends StatelessWidget {
                 ),
               ),
               Text(
-                CurrencyFormatter.format(job.hourlyReport?.finalTotalPrice ?? details.estimatedTotal),
+                CurrencyFormatter.format(job.hourlyReport?.finalTotalPrice ??
+                    details.estimatedTotal),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
@@ -1163,4 +1190,3 @@ class _HourlySummarySection extends StatelessWidget {
     );
   }
 }
-
