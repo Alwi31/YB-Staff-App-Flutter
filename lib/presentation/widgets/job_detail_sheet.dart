@@ -561,14 +561,14 @@ class _JobDetailSheetState extends State<JobDetailSheet> {
     );
   }
 
-  Widget _infoRow(String label, String value) {
+  Widget _infoRow(String label, String value, {double labelWidth = 80}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 80,
+            width: labelWidth,
             child: Text(
               label,
               style: GoogleFonts.plusJakartaSans(
@@ -876,10 +876,13 @@ class _JobDetailSheetState extends State<JobDetailSheet> {
           title: 'Estimasi Jam Kerja',
           children: [
             _infoRow(
-                'Tarif', '${CurrencyFormatter.format(tarif)} / jam / cleaner'),
+                'Tarif', '${CurrencyFormatter.format(tarif)} / jam / cleaner',
+                labelWidth: 130),
             const SizedBox(height: AppSpacing.sm),
-            _infoRow('Durasi', '${hourly.plannedDurationHours} Jam'),
-            _infoRow('Cleaner', '${hourly.plannedCleanerCount} Orang'),
+            _infoRow('Durasi', '${hourly.plannedDurationHours} Jam',
+                labelWidth: 130),
+            _infoRow('Cleaner', '${hourly.plannedCleanerCount} Orang',
+                labelWidth: 130),
             const Divider(height: AppSpacing.xl, color: Color(0xFFE5E7EB)),
             if (report != null) ...[
               Text(
@@ -892,8 +895,10 @@ class _JobDetailSheetState extends State<JobDetailSheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              _infoRow('Durasi Aktual', '${report.actualDurationHours} Jam'),
-              _infoRow('Cleaner Aktual', '${report.actualCleanerCount} Orang'),
+              _infoRow('Durasi Aktual', '${report.actualDurationHours} Jam',
+                  labelWidth: 130),
+              _infoRow('Cleaner Aktual', '${report.actualCleanerCount} Orang',
+                  labelWidth: 130),
               const SizedBox(height: AppSpacing.sm),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

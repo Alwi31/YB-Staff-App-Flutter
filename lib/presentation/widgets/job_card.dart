@@ -442,27 +442,27 @@ class _ServiceBadge extends StatelessWidget {
         display: 'Servis AC'),
     // Hourly cleaning
     'general': _ServiceStyle(
-        icon: Icons.cleaning_services_rounded,
+        icon: Icons.auto_awesome_rounded,
         bg: Color(0xFFCCFBF1),
         fg: Color(0xFF14B8A6),
         display: 'General Cleaning'), // teal
     'general_cleaning': _ServiceStyle(
-        icon: Icons.cleaning_services_rounded,
+        icon: Icons.auto_awesome_rounded,
         bg: Color(0xFFCCFBF1),
         fg: Color(0xFF14B8A6),
         display: 'General Cleaning'), // teal
     'daily': _ServiceStyle(
-        icon: Icons.cleaning_services_rounded,
+        icon: Icons.sanitizer_rounded,
         bg: Color(0xFFECFCCB),
         fg: Color(0xFF84CC16),
         display: 'Daily Cleaning'), // lime
     'daily_cleaning': _ServiceStyle(
-        icon: Icons.cleaning_services_rounded,
+        icon: Icons.sanitizer_rounded,
         bg: Color(0xFFECFCCB),
         fg: Color(0xFF84CC16),
         display: 'Daily Cleaning'), // lime
     'regular': _ServiceStyle(
-        icon: Icons.cleaning_services_rounded,
+        icon: Icons.auto_awesome_rounded,
         bg: Color(0xFFDCFCE7),
         fg: Color(0xFF16A34A),
         display: 'Regular'),
